@@ -56,8 +56,9 @@ OPENROUTER_API_KEY=your_openrouter_key
 # Google Gemini (Gemini 2.5 Flash/Pro)
 GEMINI_API_KEY=your_gemini_key
 
-# Unstable Inference endpoint (custom provider)
-
+# Supabase (auth + chat persistence)
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 3. Run dev server
@@ -73,8 +74,142 @@ Set only those you need; others can be provided per-request from the UI:
 
 - `OPENROUTER_API_KEY` — required for OpenRouter models.
 - `GEMINI_API_KEY` — required for Gemini models with images/web.
--
 - `OLLAMA_URL` — base URL for Ollama API (e.g., http://localhost:11434 or http://host.docker.internal:11434)
+
+## Supabase Setup
+
+To enable authentication and chat persistence, configure Supabase:
+
+- **Required env vars** (local `.env.local` and Vercel Project Settings):
+  - `NEXT_PUBLIC_SUPABASE_URL` — your Supabase project URL
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — your Supabase anon/public API key
+
+- **OAuth redirect URL** (if using Google/GitHub sign-in):
+  - Add to each provider in Supabase Auth Settings:
+    - `https://YOUR_DOMAIN/auth/callback` (Production)
+    - `http://localhost:3000/auth/callback` (Local)
+
+- **Database schema** (tables used by this app). Run in Supabase SQL editor:
+
+```sql
+-- Chats table
+create table if not exists public.chats (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null,
+  project_id uuid null,
+  title text not null default 'New Chat',
+  page_type text not null default 'home',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Messages table
+create table if not exists public.messages (
+  id uuid primary key default gen_random_uuid(),
+  chat_id uuid not null references public.chats(id) on delete cascade,
+  owner_id uuid not null,
+  role text not null check (role in ('system','user','assistant')),
+  content text not null,
+  model text null,
+  content_json jsonb null,
+  metadata jsonb null,
+  created_at timestamptz not null default now()
+);
+
+-- Helpful indexes
+create index if not exists idx_chats_owner on public.chats(owner_id);
+create index if not exists idx_msgs_chat on public.messages(chat_id);
+create index if not exists idx_msgs_owner on public.messages(owner_id);
+
+-- Row Level Security (optional; tighten as needed)
+alter table public.chats enable row level security;
+alter table public.messages enable row level security;
+
+-- Simple owner-based policies (adjust to your auth strategy)
+do $$ begin
+  if not exists (
+    select 1 from pg_policy where polname = 'chats_owner_policy'
+  ) then
+    create policy chats_owner_policy on public.chats
+      using (owner_id::text = auth.uid()::text)
+      with check (owner_id::text = auth.uid()::text);
+  end if;
+
+  if not exists (
+    select 1 from pg_policy where polname = 'messages_owner_policy'
+  ) then
+    create policy messages_owner_policy on public.messages
+      using (owner_id::text = auth.uid()::text)
+      with check (owner_id::text = auth.uid()::text);
+  end if;
+end $$;
+```
+
+Notes:
+- The app uses `lib/supabase.ts` on the client. Ensure the two `NEXT_PUBLIC_*` vars are set in Vercel to avoid build/runtime issues.
+- If you change columns, update usages in `lib/data.ts` accordingly.
+
+### How it works (at a glance)
+
+- **Client setup**: `lib/supabase.ts` creates a Supabase client from `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- **Auth context**: `lib/auth.tsx` (`AuthProvider`) listens to `supabase.auth` and exposes `user/session` to the app.
+- **Sign in UI**: `app/signin/page.tsx` renders Google/GitHub buttons via `AuthProvider.signInWithProvider()`.
+- **OAuth callback**: `app/auth/callback/route.ts` handles the redirect from providers.
+- **Data access**: `lib/data.ts` reads/writes:
+  - `fetchThreads(userId)` -> selects user's `chats` + `messages`.
+  - `createThread(...)` -> inserts into `chats` and optional first `messages` row.
+  - `addMessage(...)` -> inserts into `messages` and touches `chats.updated_at`.
+  - `updateThreadTitle(...)` / `deleteThread(...)` -> updates/deletes `chats`.
+- **Chat flow**: `lib/chatActions.ts` orchestrates chat turn lifecycle and persists messages. The UI (`components/chat/ChatGrid.tsx`) displays and supports editing.
+
+### Step-by-step: set up Supabase
+
+1. **Create Supabase project**
+   - Go to supabase.com -> New Project.
+   - From Project Settings -> API, copy:
+     - Project URL -> `NEXT_PUBLIC_SUPABASE_URL`
+     - anon/public API key -> `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+2. **Configure OAuth providers (optional but recommended)**
+   - In Supabase Dashboard -> Authentication -> Providers:
+     - Enable Google and/or GitHub.
+     - Set Redirect URLs:
+       - Local: `http://localhost:3000/auth/callback`
+       - Prod: `https://YOUR_DOMAIN/auth/callback`
+
+3. **Create tables and policies**
+   - Open SQL editor in Supabase, paste the schema above in “Database schema” and run.
+   - This creates `public.chats` and `public.messages`, indexes, RLS, and owner policies.
+
+4. **Add env vars to your app**
+   - Local: create `.env.local` (or `.env`) and set:
+     ```bash
+     NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+     NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+     ```
+   - Vercel: Project Settings -> Environment Variables -> add both for Production and Preview.
+
+5. **Run the app**
+   - `npm run dev` -> open http://localhost:3000
+   - Use the Sign In button (top-right) to authenticate.
+   - Start a chat; threads/messages will be persisted in Supabase.
+
+### Troubleshooting
+
+- **Build fails with “supabaseUrl is required”**
+  - Ensure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set in Vercel.
+  - We guard the client in `lib/supabase.ts` to avoid SSR/prerender crashes, but missing envs will still block actual usage.
+
+- **403 / RLS errors**
+  - Confirm you are signed in (see `components/auth/AuthButton.tsx`).
+  - Check `owner_id` is set to `auth.uid()` on insert paths used by `lib/data.ts`.
+  - Verify the owner policies from the schema ran successfully.
+
+- **Nothing shows in sidebar after sign-in**
+  - `lib/data.ts.fetchThreads(userId)` filters `chats.owner_id = userId`. Ensure you created chats after logging in.
+
+- **Changed schema?**
+  - Update `lib/data.ts` mappings: `mapChatRowToThread()` and `mapMessageRowToChatMessage()`.
 
 ## Ollama Support
 
