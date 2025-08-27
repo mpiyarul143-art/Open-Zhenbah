@@ -1,7 +1,7 @@
 'use client';
 import ConfirmDialog from '@/components/modals/ConfirmDialog';
 import type { AiModel, ChatMessage } from '@/lib/types';
-import { ChevronDown, ChevronUp, Eye, Loader2, Pencil, Save, Star, Trash, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Eye, Loader2, Pencil, Star, Trash } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import MarkdownLite from './MarkdownLite';
 import { CopyToClipboard } from '../ui/CopyToClipboard';
@@ -143,43 +143,6 @@ export default function ChatGrid({
 
             {pairs.map((row, i) => (
               <div key={i} className="space-y-3">
-                {/* Prompt callout */}
-                <div className="relative flex items-start justify-between gap-3 px-3 py-2 rounded-lg ring-1 ring-black/10 dark:ring-white/10 chat-prompt-accent">
-                  <div className="chat-prompt-side" />
-                  <div className="flex items-start gap-2 min-w-0 flex-1">
-                    <span className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11px] font-semibold text-black dark:text-white bg-black/60 dark:bg-black/60 ring-1 ring-black/15 dark:ring-white/15 border border-black/15 dark:border-white/15 backdrop-blur-sm shadow-[0_2px_10px_rgba(0,0,0,0.45)] shrink-0">
-                      <span className="h-2 w-2 rounded-full bg-black/90 dark:bg-white/90 shadow-[0_0_6px_rgba(0,0,0,0.6)] dark:shadow-[0_0_6px_rgba(255,255,255,0.6)]" />
-                      You
-                    </span>
-                    <div className="flex-1 min-w-0">
-                                            {editingIdx === i ? (
-                        <div className="space-y-2">
-                          <textarea
-                            value={draft}
-                            onChange={(e) => setDraft(e.target.value)}
-                            className="w-full min-h-[80px] p-2 text-sm bg-black/20 border border-white/20 rounded resize-none text-white placeholder-white/50 focus:outline-none focus:border-white/40"
-                            placeholder="Edit your message..."
-                            autoFocus
-                          />
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => {
-                                const next = draft.trim();
-                                const current = String(row.user.content ?? '').trim();
-                                if (next === current) {
-                                  setEditingIdx(null);
-                                  setDraft('');
-                                  return;
-                                }
-                                onEditUser(i, next);
-                                setEditingIdx(null);
-                                setDraft('');
-                              }}
-                              className="icon-btn h-7 w-7 accent-focus"
-                              title="Save changes"
-                              disabled={!draft.trim() || draft.trim() === String(row.user.content ?? '').trim()}
-                            >
-                              <Save size={14}/>
                 {/* User prompt as right-aligned red pill */}
                 <div className="px-2 flex justify-end">
                   <div className="max-w-[68ch]">
@@ -224,10 +187,6 @@ export default function ChatGrid({
                                 setEditingIdx(null);
                                 setDraft('');
                               }}
-                              className="icon-btn h-7 w-7 accent-focus"
-                              title="Cancel editing"
-                            >
-                              <X size={14}/>
                               className="px-3 py-1 text-xs rounded bg-white/10 hover:bg-white/20 text-white transition-colors"
                             >
                               Cancel
@@ -235,43 +194,6 @@ export default function ChatGrid({
                           </div>
                         </div>
                       ) : (
-                        <div className="text-sm leading-relaxed text-black dark:text-white">
-                          {row.user.content}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {editingIdx === i ? null : (
-                      <>
-                        <button
-                          onClick={() => {
-                            setEditingIdx(i);
-                            setDraft(row.user.content);
-                          }}
-                          className="icon-btn h-7 w-7 accent-focus"
-                          title="Edit message"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setPendingDelete({
-                              type: 'turn',
-                              turnIndex: i,
-                            })
-                          }
-                          className="icon-btn h-7 w-7 accent-focus"
-                          title="Delete message"
-                        >
-                          <Trash size={14} />
-                        </button>
-
-                        <CopyToClipboard getText={() => row.user.content} />
-                      </>
-                    )}
-                  </div>
-
                         <>
                           <div className="ml-auto inline-flex items-center text-sm leading-relaxed px-3 py-1.5 rounded-full bg-rose-600 text-white shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
                             <span className="truncate whitespace-pre-wrap break-words max-w-[68ch]">{row.user.content}</span>
