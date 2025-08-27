@@ -27,6 +27,7 @@ import FirstVisitNote from '@/components/app/FirstVisitNote'
 import LaunchScreen from '@/components/ui/LaunchScreen'
 import { useTheme } from '@/lib/themeContext'
 import { BACKGROUND_STYLES } from '@/lib/themes'
+import SupportDropdown from '@/components/support-dropdown'
 
 export default function OpenFiestaChat() {
   const { user } = useAuth()
@@ -566,6 +567,9 @@ export default function OpenFiestaChat() {
         pauseOnHover
         theme="dark"
       />
+
+      {/* Support dropdown floating action at bottom-right */}
+      <SupportDropdown theme={theme.mode === 'dark' ? 'dark' : 'light'} />
     </div>
   )
 }

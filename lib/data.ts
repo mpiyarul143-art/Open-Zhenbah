@@ -33,7 +33,7 @@ export async function fetchThreads(userId: string): Promise<ChatThread[]> {
   if (error) throw error
   if (!chats || chats.length === 0) return []
 
-  const chatIds = chats.map((c) => c.id)
+  const chatIds = chats.map((c: { id: any }) => c.id)
   const { data: messages, error: msgErr } = await supabase
     .from('messages')
     .select('*')
@@ -49,7 +49,7 @@ export async function fetchThreads(userId: string): Promise<ChatThread[]> {
     messageMap.set(m.chat_id, list)
   }
 
-  return chats.map((c) => mapChatRowToThread(c, messageMap.get(c.id) || []))
+  return chats.map((c: { id: string }) => mapChatRowToThread(c, messageMap.get(c.id) || []))
 }
 
 export async function createThread(params: {

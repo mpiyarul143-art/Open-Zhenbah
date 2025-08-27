@@ -26,6 +26,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import CustomModels from '@/components/modals/CustomModels';
 import Settings from '@/components/app/Settings';
 import { Layers } from 'lucide-react';
+import SupportDropdown from '@/components/support-dropdown';
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -202,6 +203,29 @@ export default function Home() {
     return rows;
   }, [messages]);
 
+  // For compare page only: while waiting for model responses, inject a placeholder
+  // "Thinking…" message for each loading model on the latest turn so the UI
+  // shows a loading indicator instead of "No response".
+  const pairsWithPlaceholders = useMemo(() => {
+    const cloned = pairs.map(r => ({ user: r.user, answers: [...r.answers] }));
+    if (cloned.length === 0) return cloned;
+    const last = cloned[cloned.length - 1];
+    const answeredIds = new Set(last.answers.map(a => a.modelId).filter(Boolean) as string[]);
+    // Show placeholders for any selected model that hasn't answered yet
+    selectedModels.forEach(m => {
+      if (!answeredIds.has(m.id)) {
+        last.answers.push({
+          id: `thinking-${m.id}-${safeUUID()}`,
+          role: 'assistant',
+          content: 'Thinking…',
+          modelId: m.id,
+          createdAt: new Date().toISOString(),
+        } as ChatMessage);
+      }
+    });
+    return cloned;
+  }, [pairs, loadingIds, selectedModels]);
+
   // Delete a full user turn (user + all its answers)
   const onDeleteUser = (turnIndex: number) => {
     if (!activeThread) return;
@@ -253,7 +277,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className={`min-h-screen w-full ${backgroundClass} relative text-black dark:text-white`}>
+    <div className={`compare-page min-h-screen w-full ${backgroundClass} relative text-black dark:text-white`}>
       {showSplash && (
         <div className="fixed inset-0 z-[9999]">
           <LaunchScreen backgroundClass={backgroundClass} dismissed={isHydrated} />
@@ -414,7 +438,7 @@ export default function Home() {
                 collapsedIds={collapsedIds}
                 setCollapsedIds={setCollapsedIds}
                 loadingIds={loadingIds}
-                pairs={pairs}
+                pairs={pairsWithPlaceholders}
                 onEditUser={onEditUser}
                 onDeleteUser={onDeleteUser}
                 onDeleteAnswer={onDeleteAnswer}
@@ -438,6 +462,110 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Support dropdown floating action at bottom-right */}
+      <SupportDropdown theme={theme.mode === 'dark' ? 'dark' : 'light'} />
+
+      {/* Compare-only visual overrides */}
+      <style jsx global>{`
+        /* Compare-only background blend overlay */
+        .compare-page {
+          position: relative;
+        }
+        .compare-page::before {
+          content: '';
+          position: fixed;
+          inset: 0;
+          pointer-events: none;
+          z-index: 0;
+          /* Subtle warm radial glow + dark vignette to match card tones */
+          background:
+            radial-gradient(1000px 600px at 50% 10%, rgba(160, 40, 40, 0.20), transparent 60%),
+            radial-gradient(800px 500px at 20% 80%, rgba(160, 40, 40, 0.14), transparent 70%),
+            linear-gradient(to bottom, rgba(3, 3, 3, 0.92), rgba(5, 5, 5, 0.96));
+        }
+        /* Dark theme: slightly stronger vignette, light theme: softer */
+        :root.dark .compare-page::before { opacity: 1; }
+        :root:not(.dark) .compare-page::before { opacity: 0.85; }
+
+        /* Global blur/soft-darkening overlay for compare page */
+        .compare-page::after {
+          content: '';
+          position: fixed;
+          inset: 0;
+          pointer-events: none;
+          z-index: 0;
+          background: rgba(0, 0, 0, 0.22);
+          -webkit-backdrop-filter: blur(18px) saturate(120%);
+          backdrop-filter: blur(18px) saturate(120%);
+        }
+
+        /* Glassmorphism for chat cards (dark theme only) */
+        :root.dark .compare-page .group.relative.rounded-lg {
+          background: rgba(10, 10, 10, 0.50) !important;
+          -webkit-backdrop-filter: blur(18px) saturate(130%);
+          backdrop-filter: blur(18px) saturate(130%);
+          border: 1px solid rgba(255, 255, 255, 0.12) !important;
+          box-shadow:
+            0 14px 34px rgba(0, 0, 0, 0.42),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        :root.dark .compare-page .group.relative.rounded-lg:hover {
+          background: rgba(14, 14, 14, 0.56) !important;
+          border-color: rgba(255, 255, 255, 0.16) !important;
+          box-shadow:
+            0 18px 44px rgba(0, 0, 0, 0.5),
+            inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        :root.dark .compare-page .group.relative.rounded-lg:focus-within {
+          outline: none;
+          border-color: rgba(255, 255, 255, 0.2) !important;
+          box-shadow:
+            0 20px 52px rgba(0, 0, 0, 0.54),
+            0 0 0 1px rgba(255, 255, 255, 0.09),
+            inset 0 1px 0 rgba(255, 255, 255, 0.07);
+        }
+
+        /* Light theme fallback: very subtle glass */
+        :root:not(.dark) .compare-page .group.relative.rounded-lg {
+          background: rgba(255, 255, 255, 0.18) !important;
+          -webkit-backdrop-filter: blur(10px) saturate(140%);
+          backdrop-filter: blur(10px) saturate(140%);
+          border: 1px solid rgba(0, 0, 0, 0.06) !important;
+          box-shadow:
+            0 10px 28px rgba(0, 0, 0, 0.18),
+            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+
+        /* Remove grey pill around the Thinking indicator (compare-only) */
+        .compare-page [class*="inline-flex"][class*="rounded-full"][class*="ring-1"],
+        .compare-page [class*="bg-white/10"][class*="ring-1"][class*="rounded-full"] {
+          background: transparent !important;
+          border: 0 !important;
+          box-shadow: none !important;
+          padding: 0 !important;
+          border-radius: 0 !important;
+        }
+
+        /* Slightly stronger text color for the Thinking label */
+        .compare-page .text-white/90 { color: rgba(255,255,255,0.95) !important; }
+
+        /* Remove bubble background/ring from assistant content blocks */
+        .compare-page .max-w\[72ch\].rounded-2xl,
+        .compare-page .group.relative.rounded-lg [class*="max-w"][class*="rounded-2xl"] {
+          background: transparent !important;
+          border-color: transparent !important;
+          box-shadow: none !important;
+        }
+
+        /* Improve text readability inside answer content */
+        .compare-page .max-w\[72ch\] { color: rgba(255,255,255,0.92); }
+
+        /* Ensure overall cell is darker regardless of hover/collapsed state */
+        .compare-page .group.relative.rounded-lg {
+          border-color: rgba(255,255,255,0.08) !important;
+        }
+      `}</style>
     </div>
   );
 }

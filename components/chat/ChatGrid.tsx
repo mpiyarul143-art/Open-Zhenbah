@@ -104,7 +104,6 @@ export default function ChatGrid({
                         )}
                         {isFree && (
                           <span className="badge-base badge-free inline-flex items-center gap-1 h-6 self-center">
-                            <span className="h-2 w-2 rounded-full bg-current opacity-80" />
                             <span className="hidden sm:inline">Free</span>
                           </span>
                         )}
@@ -297,9 +296,7 @@ export default function ChatGrid({
                               />
                             </div>
                           )}
-                          <div className="relative pl-7">
-                            {/* small orb indicator */}
-                            <span className="absolute left-0 top-1.5 h-3.5 w-3.5 rounded-full bg-white/70 shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
+                          <div className="relative">
                             <div
                               className={`text-sm leading-relaxed w-full pr-8 ${
                                 isCollapsed ? 'overflow-hidden max-h-20 opacity-70' : 'space-y-2'
@@ -388,18 +385,16 @@ export default function ChatGrid({
                                 </>
                               ) : loadingIds.includes(m.id) ||
                                 (ans && ['Thinking…', 'Typing…'].includes(String(ans.content))) ? (
-                                <div className="w-full self-stretch space-y-3">
+                                <div className="w-full self-stretch">
                                   <div className="inline-flex items-center gap-2 text-[12px] font-medium text-rose-100">
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/20 ring-1 ring-rose-300/30">
-                                      <Loader2 className="animate-spin" size={13} />
-                                      Thinking…
+                                    <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/10 ring-1 ring-white/15">
+                                      <span className="text-white/90">Thinking</span>
+                                      <span className="inline-flex items-center gap-0.5" aria-hidden>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                        <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: '120ms' }} />
+                                        <span className="w-1.5 h-1.5 rounded-full bg-white/50 animate-bounce" style={{ animationDelay: '240ms' }} />
+                                      </span>
                                     </span>
-                                  </div>
-                                  <div className="animate-pulse space-y-2">
-                                    <div className="h-2.5 w-1/3 rounded accent-bar-faint" />
-                                    <div className="h-2 rounded bg-white/10" />
-                                    <div className="h-2 rounded bg-white/10 w-5/6" />
-                                    <div className="h-2 rounded bg-white/10 w-2/3" />
                                   </div>
                                 </div>
                               ) : (

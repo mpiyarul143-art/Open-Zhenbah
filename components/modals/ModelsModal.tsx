@@ -219,8 +219,8 @@ export default function ModelsModal({
     iconUrl?: string;
     iconAlt?: string;
   }) => (
-    <div className="space-y-4">
-      <div className="text-base font-semibold text-white flex items-center gap-3 pb-3 border-b border-zinc-700/50">
+    <div className="space-y-3">
+      <div className="text-base font-semibold text-white flex items-center gap-3 pb-2 border-b border-zinc-700/50">
         <div className="p-2 rounded-lg bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700/50">
           {iconUrl ? (
             <img
@@ -239,11 +239,11 @@ export default function ModelsModal({
           )}
         </div>
         <span className="text-lg">{title}</span>
-        <span className="text-sm text-zinc-400 ml-auto bg-zinc-800/50 px-2 py-1 rounded-full">
+        <span className="text-sm text-zinc-400 ml-auto bg-zinc-800/50 px-2 py-0.5 rounded-full">
           {models.length}
         </span>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {models.map((m) => {
           const free = isFree(m);
           const byok = isByok(m);
@@ -257,7 +257,7 @@ export default function ModelsModal({
               key={m.id}
               onClick={() => !disabled && handleToggle(m)}
               className={`relative group cursor-pointer rounded-2xl border backdrop-blur-sm transition-all duration-300 overflow-hidden ${
-                disabled ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.03] hover:shadow-2xl hover:shadow-red-500/5'
+                disabled ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.02] hover:shadow-2xl hover:shadow-red-500/5'
               } ${
                 selected
                   ? 'border-red-400/50 bg-gradient-to-br from-red-950/40 via-zinc-900/90 to-black/70 shadow-2xl shadow-red-500/20 ring-1 ring-red-500/20'
@@ -277,13 +277,13 @@ export default function ModelsModal({
               )}
               
               {/* Model card content */}
-              <div className="relative p-5 flex flex-col h-full min-h-[140px]">
+              <div className="relative p-4 flex flex-col h-full min-h-[120px]">
                 {/* Header with badges */}
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between mb-3">
                   <div className="flex flex-wrap gap-2">
                     {m.good && (
                       <motion.span 
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-500/25 to-amber-500/25 text-yellow-200 text-xs font-bold border border-yellow-500/30 shadow-lg shadow-yellow-500/10"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-yellow-500/25 to-amber-500/25 text-yellow-200 text-xs font-bold border border-yellow-500/30 shadow-lg shadow-yellow-500/10"
                         whileHover={{ scale: 1.05 }}
                       >
                         <Star size={12} className="text-yellow-400" fill="currentColor" />
@@ -292,7 +292,7 @@ export default function ModelsModal({
                     )}
                     {free && (
                       <motion.span 
-                        className="inline-flex items-center px-3 py-1.5 rounded-full bg-gradient-to-r from-green-500/25 to-emerald-500/25 text-green-200 text-xs font-bold border border-green-500/30 shadow-lg shadow-green-500/10"
+                        className="inline-flex items-center px-2.5 py-1 rounded-full bg-gradient-to-r from-green-500/25 to-emerald-500/25 text-green-200 text-xs font-bold border border-green-500/30 shadow-lg shadow-green-500/10"
                         whileHover={{ scale: 1.05 }}
                       >
                         Free
@@ -300,7 +300,7 @@ export default function ModelsModal({
                     )}
                     {byok && (
                       <motion.span 
-                        className="inline-flex items-center px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-500/25 to-cyan-500/25 text-blue-200 text-xs font-bold border border-blue-500/30 shadow-lg shadow-blue-500/10"
+                        className="inline-flex items-center px-2.5 py-1 rounded-full bg-gradient-to-r from-blue-500/25 to-cyan-500/25 text-blue-200 text-xs font-bold border border-blue-500/30 shadow-lg shadow-blue-500/10"
                         whileHover={{ scale: 1.05 }}
                       >
                         BYOK
@@ -308,7 +308,7 @@ export default function ModelsModal({
                     )}
                     {isThinking && (
                       <motion.span 
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500/25 to-violet-500/25 text-purple-200 text-xs font-bold border border-purple-500/30 shadow-lg shadow-purple-500/10"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-500/25 to-violet-500/25 text-purple-200 text-xs font-bold border border-purple-500/30 shadow-lg shadow-purple-500/10"
                         whileHover={{ scale: 1.05 }}
                       >
                         <Brain size={12} className="text-purple-400" />
@@ -317,7 +317,7 @@ export default function ModelsModal({
                     )}
                     {isVision && (
                       <motion.span 
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/25 to-teal-500/25 text-cyan-200 text-xs font-bold border border-cyan-500/30 shadow-lg shadow-cyan-500/10"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-cyan-500/25 to-teal-500/25 text-cyan-200 text-xs font-bold border border-cyan-500/30 shadow-lg shadow-cyan-500/10"
                         whileHover={{ scale: 1.05 }}
                       >
                         <Eye size={12} className="text-cyan-400" />
@@ -326,7 +326,7 @@ export default function ModelsModal({
                     )}
                     {isUnc(m) && (
                       <motion.span 
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-red-500/25 to-rose-500/25 text-red-200 text-xs font-bold border border-red-500/30 shadow-lg shadow-red-500/10"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-red-500/25 to-rose-500/25 text-red-200 text-xs font-bold border border-red-500/30 shadow-lg shadow-red-500/10"
                         whileHover={{ scale: 1.05 }}
                       >
                         <span className="w-2.5 h-2.5 rounded-full bg-red-400 animate-pulse" />
@@ -335,7 +335,7 @@ export default function ModelsModal({
                     )}
                     {m.category === 'image' && (
                       <motion.span 
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-pink-500/25 to-rose-500/25 text-pink-200 text-xs font-bold border border-pink-500/30 shadow-lg shadow-pink-500/10"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500/25 to-rose-500/25 text-pink-200 text-xs font-bold border border-pink-500/30 shadow-lg shadow-pink-500/10"
                         whileHover={{ scale: 1.05 }}
                       >
                         <ImageIcon size={12} className="text-pink-400" />
@@ -344,7 +344,7 @@ export default function ModelsModal({
                     )}
                     {m.category === 'audio' && (
                       <motion.span 
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-orange-500/25 to-red-500/25 text-orange-200 text-xs font-bold border border-orange-500/30 shadow-lg shadow-orange-500/10"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-orange-500/25 to-red-500/25 text-orange-200 text-xs font-bold border border-orange-500/30 shadow-lg shadow-orange-500/10"
                         whileHover={{ scale: 1.05 }}
                       >
                         <Mic size={12} className="text-orange-400" />
@@ -357,35 +357,35 @@ export default function ModelsModal({
                       e.stopPropagation();
                       toggleFavorite(m.id);
                     }}
-                    className={`p-2 rounded-lg transition-all duration-200 ${
+                    className={`p-1.5 rounded-lg transition-all duration-200 ${
                       isFav(m)
                         ? 'text-yellow-400 hover:text-yellow-300 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20'
                         : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/10 border border-transparent hover:border-white/10'
                     }`}
                   >
-                    {isFav(m) ? <Star size={16} fill="currentColor" /> : <StarOff size={16} />}
+                    {isFav(m) ? <Star size={14} fill="currentColor" /> : <StarOff size={14} />}
                   </button>
                 </div>
                 
                 {/* Model name */}
-                <h4 className="font-semibold text-white text-base mb-2 line-clamp-2 leading-tight">
+                <h4 className="font-semibold text-white text-[15px] mb-1.5 line-clamp-2 leading-tight">
                   {m.label}
                 </h4>
                 
                 {/* Provider */}
-                <p className="text-sm text-zinc-400 mb-4 capitalize font-medium">
+                <p className="text-[12px] text-zinc-400 mb-3 capitalize font-medium">
                   {m.provider.replace('-', ' ')}
                 </p>
                 
                 {/* Enhanced selection indicator */}
                 <div className="mt-auto">
-                  <div className={`w-full h-1.5 rounded-full transition-all duration-300 ${
+                  <div className={`w-full h-1 rounded-full transition-all duration-300 ${
                     selected 
                       ? 'bg-gradient-to-r from-red-600 via-red-400 to-red-600 shadow-lg shadow-red-500/40' 
                       : 'bg-gradient-to-r from-zinc-700/80 via-zinc-600/60 to-zinc-700/80'
                   }`} />
                   {selected && (
-                    <div className="text-xs text-red-300 font-semibold mt-2 text-center tracking-wide">
+                    <div className="text-xs text-red-300 font-semibold mt-1.5 text-center tracking-wide">
                       ✓ SELECTED
                     </div>
                   )}
@@ -453,21 +453,21 @@ export default function ModelsModal({
       <div
         role="dialog"
         aria-modal="true"
-        className="relative w-full sm:w-full max-w-none sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-3 sm:mx-auto rounded-xl sm:rounded-2xl border border-white/10 bg-zinc-900/90 p-4 sm:p-6 md:p-7 lg:p-8 shadow-2xl h-[90vh] sm:max-h-[90vh] overflow-hidden flex flex-col min-h-0"
+        className="relative w-full sm:w-full max-w-none sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-3 sm:mx-auto rounded-xl sm:rounded-2xl border border-white/10 bg-zinc-900/90 p-4 sm:p-5 md:p-6 lg:p-6 shadow-2xl h-[90vh] sm:max-h-[90vh] overflow-hidden flex flex-col min-h-0"
       >
-        <div className="px-4 sm:-mx-6 md:-mx-7 lg:-mx-8 sm:px-6 md:px-7 lg:px-8 pt-1 pb-3 mb-3 flex items-center justify-between bg-zinc-900/95 backdrop-blur border-b border-white/10">
+        <div className="px-4 sm:-mx-6 md:-mx-7 lg:-mx-8 sm:px-6 md:px-7 lg:px-8 pt-1 pb-2 mb-2 flex items-center justify-between bg-zinc-900/95 backdrop-blur border-b border-white/10">
           <h3 className="text-base md:text-lg lg:text-xl font-semibold tracking-wide">
             Select up to 5 models
           </h3>
           <button
             aria-label="Close"
             onClick={onClose}
-            className="h-8 w-8 md:h-9 md:w-9 inline-flex items-center justify-center rounded-md bg-white/10 hover:bg-white/20"
+            className="h-8 w-8 md:h-8 md:w-8 inline-flex items-center justify-center rounded-md bg-white/10 hover:bg-white/20"
           >
             <X size={16} />
           </button>
         </div>
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div className="text-sm text-zinc-300">
             Selected: <span className="text-white font-medium">{selectedModels.length}/5</span>
           </div>
@@ -480,7 +480,7 @@ export default function ModelsModal({
               placeholder="Search models..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-zinc-400 focus:outline-none focus:border-white/30 focus:bg-white/10 w-64"
+              className="pl-9 pr-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-zinc-400 focus:outline-none focus:border-white/30 focus:bg-white/10 w-56"
             />
           </div>
         </div>
