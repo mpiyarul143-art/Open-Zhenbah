@@ -1,11 +1,12 @@
 'use client';
 import ConfirmDialog from '@/components/modals/ConfirmDialog';
 import type { AiModel, ChatMessage } from '@/lib/types';
-import { ChevronDown, ChevronUp, Eye, Loader2, Pencil, Star, Trash } from 'lucide-react';
+import { ChevronDown, ChevronUp, Eye, Loader2, Pencil, Star, Trash, Expand, Shrink } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import MarkdownLite from './MarkdownLite';
 import { CopyToClipboard } from '../ui/CopyToClipboard';
 import { estimateTokens, sanitizeContent } from '@/lib/utils';
+import ModelSelector from '../selectors/ModelSelector';
 
 export type ChatGridProps = {
   selectedModels: AiModel[];
@@ -248,7 +249,7 @@ export default function ChatGrid({
                           {/* decorative overlay removed for cleaner look */}
                           {ans && String(ans.content || '').length > 0 && (
                             <div
-                              className={`absolute top-2 right-2 z-10 flex gap-2 ${
+                              className={`absolute top-2 right-2 z-10 flex flex-col gap-2 ${
                                 isCollapsed
                                   ? 'opacity-0 pointer-events-none'
                                   : 'opacity-0 group-hover:opacity-100'
@@ -267,6 +268,29 @@ export default function ChatGrid({
                               >
                                 <Trash size={12} />
                               </button>
+
+                              {selectedModels.length - 1 !== collapsedIds.length ? (
+                                <button
+                                  onClick={() => {
+                                    setCollapsedIds(
+                                      () => selectedModels.map((i) => (i.id === m.id ? "NAI" : i.id )).filter((id) => id !== "NAI"),
+                                    );
+                                  }}
+                                  className="icon-btn h-7 w-7 accent-focus"
+                                  title={`Expand ${m.label} response`}
+                                >
+                                  <Expand size={12} />
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => setCollapsedIds(() => [])}
+                                  className="icon-btn h-7 w-7 accent-focus"
+                                  title={`Shrink ${m.label} response`}
+                                >
+                                  <Shrink size={12} />
+                                </button>
+                              )}
+
                               <CopyToClipboard
                                 getText={() => sanitizeContent(ans.content)}
                                 title={`Copy ${m.label} response`}
@@ -286,101 +310,101 @@ export default function ChatGrid({
                               }`}
                               style={{ WebkitOverflowScrolling: 'touch' }}
                             >
-                            {ans &&
-                            String(ans.content || '').length > 0 &&
-                            !['Thinking…', 'Typing…'].includes(String(ans.content)) ? (
-                              <>
-                                <div className="max-w-[72ch] rounded-2xl bg-white/10 ring-1 ring-white/10 px-3 py-2">
-                                  <MarkdownLite text={sanitizeContent(ans.content)} />
-                                </div>
-                                {/* Token usage footer */}
-                                {ans.tokens &&
-                                  !isCollapsed &&
-                                  (() => {
-                                    const by = ans.tokens?.by;
-                                    const model = ans.tokens?.model;
-                                    const inTokens = Array.isArray(ans.tokens?.perMessage)
-                                      ? ans.tokens!.perMessage!.reduce(
-                                          (sum, x) => sum + (Number(x?.tokens) || 0),
-                                          0,
-                                        )
-                                      : (ans.tokens?.total ?? undefined);
-                                    const outTokens = estimateTokens(String(ans.content || ''));
-                                    return (
-                                      <div className="mt-2 text-[11px] text-zinc-300/80">
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-white/10 bg-white/5">
-                                          {typeof inTokens === 'number' && (
-                                            <span className="opacity-80">In:</span>
-                                          )}
-                                          {typeof inTokens === 'number' && (
-                                            <span className="font-medium">{inTokens}</span>
-                                          )}
-                                          <span className="opacity-80">Out:</span>
-                                          <span className="font-medium">{outTokens}</span>
-                                          {by && <span className="opacity-70">• {by}</span>}
-                                          {model && <span className="opacity-70">• {model}</span>}
-                                        </span>
-                                      </div>
-                                    );
-                                  })()}
-                                {ans.code === 503 && ans.provider === 'openrouter' && (
-                                  <div className="mt-2 inline-flex items-center gap-2 text-xs text-amber-200/90 bg-amber-500/15 ring-1 ring-amber-300/30 px-2.5 py-1.5 rounded">
-                                    <span>
-                                      Free pool temporarily unavailable (503). Try again soon,
-                                      switch model, or add your own OpenRouter API key for higher
-                                      limits.
+                              {ans &&
+                              String(ans.content || '').length > 0 &&
+                              !['Thinking…', 'Typing…'].includes(String(ans.content)) ? (
+                                <>
+                                  <div className="max-w-[72ch] rounded-2xl bg-white/10 ring-1 ring-white/10 px-3 py-2">
+                                    <MarkdownLite text={sanitizeContent(ans.content)} />
+                                  </div>
+                                  {/* Token usage footer */}
+                                  {ans.tokens &&
+                                    !isCollapsed &&
+                                    (() => {
+                                      const by = ans.tokens?.by;
+                                      const model = ans.tokens?.model;
+                                      const inTokens = Array.isArray(ans.tokens?.perMessage)
+                                        ? ans.tokens!.perMessage!.reduce(
+                                            (sum, x) => sum + (Number(x?.tokens) || 0),
+                                            0,
+                                          )
+                                        : (ans.tokens?.total ?? undefined);
+                                      const outTokens = estimateTokens(String(ans.content || ''));
+                                      return (
+                                        <div className="mt-2 text-[11px] text-zinc-300/80">
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-white/10 bg-white/5">
+                                            {typeof inTokens === 'number' && (
+                                              <span className="opacity-80">In:</span>
+                                            )}
+                                            {typeof inTokens === 'number' && (
+                                              <span className="font-medium">{inTokens}</span>
+                                            )}
+                                            <span className="opacity-80">Out:</span>
+                                            <span className="font-medium">{outTokens}</span>
+                                            {by && <span className="opacity-70">• {by}</span>}
+                                            {model && <span className="opacity-70">• {model}</span>}
+                                          </span>
+                                        </div>
+                                      );
+                                    })()}
+                                  {ans.code === 503 && ans.provider === 'openrouter' && (
+                                    <div className="mt-2 inline-flex items-center gap-2 text-xs text-amber-200/90 bg-amber-500/15 ring-1 ring-amber-300/30 px-2.5 py-1.5 rounded">
+                                      <span>
+                                        Free pool temporarily unavailable (503). Try again soon,
+                                        switch model, or add your own OpenRouter API key for higher
+                                        limits.
+                                      </span>
+                                      <button
+                                        onClick={() =>
+                                          window.dispatchEvent(new Event('open-settings'))
+                                        }
+                                        className="ml-1 px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                                      >
+                                        Add key
+                                      </button>
+                                    </div>
+                                  )}
+                                  {(() => {
+                                    try {
+                                      const txt = String(ans.content || '');
+                                      const show =
+                                        /add your own\s+(?:openrouter|gemini)\s+api key/i.test(txt);
+                                      return show;
+                                    } catch {
+                                      return false;
+                                    }
+                                  })() && (
+                                    <div className="mt-2">
+                                      <button
+                                        onClick={() =>
+                                          window.dispatchEvent(new Event('open-settings'))
+                                        }
+                                        className="text-xs px-2.5 py-1 rounded text-white border border-white/10 accent-action-fill"
+                                      >
+                                        Add keys
+                                      </button>
+                                    </div>
+                                  )}
+                                </>
+                              ) : loadingIds.includes(m.id) ||
+                                (ans && ['Thinking…', 'Typing…'].includes(String(ans.content))) ? (
+                                <div className="w-full self-stretch space-y-3">
+                                  <div className="inline-flex items-center gap-2 text-[12px] font-medium text-rose-100">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/20 ring-1 ring-rose-300/30">
+                                      <Loader2 className="animate-spin" size={13} />
+                                      Thinking…
                                     </span>
-                                    <button
-                                      onClick={() =>
-                                        window.dispatchEvent(new Event('open-settings'))
-                                      }
-                                      className="ml-1 px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white border border-white/10"
-                                    >
-                                      Add key
-                                    </button>
                                   </div>
-                                )}
-                                {(() => {
-                                  try {
-                                    const txt = String(ans.content || '');
-                                    const show =
-                                      /add your own\s+(?:openrouter|gemini)\s+api key/i.test(txt);
-                                    return show;
-                                  } catch {
-                                    return false;
-                                  }
-                                })() && (
-                                  <div className="mt-2">
-                                    <button
-                                      onClick={() =>
-                                        window.dispatchEvent(new Event('open-settings'))
-                                      }
-                                      className="text-xs px-2.5 py-1 rounded text-white border border-white/10 accent-action-fill"
-                                    >
-                                      Add keys
-                                    </button>
+                                  <div className="animate-pulse space-y-2">
+                                    <div className="h-2.5 w-1/3 rounded accent-bar-faint" />
+                                    <div className="h-2 rounded bg-white/10" />
+                                    <div className="h-2 rounded bg-white/10 w-5/6" />
+                                    <div className="h-2 rounded bg-white/10 w-2/3" />
                                   </div>
-                                )}
-                              </>
-                            ) : loadingIds.includes(m.id) ||
-                              (ans && ['Thinking…', 'Typing…'].includes(String(ans.content))) ? (
-                              <div className="w-full self-stretch space-y-3">
-                                <div className="inline-flex items-center gap-2 text-[12px] font-medium text-rose-100">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/20 ring-1 ring-rose-300/30">
-                                    <Loader2 className="animate-spin" size={13} />
-                                    Thinking…
-                                  </span>
                                 </div>
-                                <div className="animate-pulse space-y-2">
-                                  <div className="h-2.5 w-1/3 rounded accent-bar-faint" />
-                                  <div className="h-2 rounded bg-white/10" />
-                                  <div className="h-2 rounded bg-white/10 w-5/6" />
-                                  <div className="h-2 rounded bg-white/10 w-2/3" />
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-zinc-400 text-sm">No response</span>
-                            )}
+                              ) : (
+                                <span className="text-zinc-400 text-sm">No response</span>
+                              )}
                             </div>
                           </div>
                           {isCollapsed && (

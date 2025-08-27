@@ -32,7 +32,7 @@ export const CopyToClipboard = ({
         });
       }}
       className={cn(
-        `icon-btn h-7 w-7 ${
+        `icon-btn h-7 w-7 cursor-pointer ${
           state === 'copied'
             ? 'bg-emerald-500/15 border-emerald-300/30 text-emerald-100'
             : state === 'failed'
