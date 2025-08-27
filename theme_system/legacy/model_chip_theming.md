@@ -46,7 +46,7 @@ These attributes enable variant targeting without adding more utility classes. A
 
 ## Selection Logic
 
-In `ModelsModal` and `SelectedModelsBar` the selection state drives `data-selected` plus conditional inclusion of `model-chip-pro` / `model-chip-free` classes. Neutral models keep a low-emphasis border with hover brightening.
+In `ModelsModal` the selection state drives `data-selected` plus conditional inclusion of `model-chip-pro` / `model-chip-free` classes. Neutral models keep a low-emphasis border with hover brightening.
 
 ## Extending For New Model Categories
 

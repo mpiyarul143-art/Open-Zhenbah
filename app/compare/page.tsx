@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import HeaderBar from '@/components/app/HeaderBar';
-import SelectedModelsBar from '@/components/chat/SelectedModelsBar';
 import VoiceSelector from '@/components/modals/VoiceSelector';
 import { useLocalStorage } from '@/lib/useLocalStorage';
 import { mergeModels, useCustomModels } from '@/lib/customModels';
@@ -101,7 +100,7 @@ export default function Home() {
   const headerTemplate = useMemo(() => {
     if (selectedModels.length === 0) return '';
     const parts = selectedModels.map((m) =>
-      collapsedIds.includes(m.id) ? '72px' : 'minmax(280px, 1fr)',
+      collapsedIds.includes(m.id) ? '90px' : 'minmax(280px, 1fr)',
     );
     return parts.join(' ');
   }, [selectedModels, collapsedIds]);
@@ -402,9 +401,6 @@ export default function Home() {
               />
             </div>
 
-            {/* Selected models row + actions */}
-            <SelectedModelsBar selectedModels={selectedModels} onToggle={toggle} />
-
             {/* Voice selector for audio models */}
             {isHydrated && selectedModels.some((m) => m.category === 'audio') && (
               <div className="mb-3 px-4">
@@ -442,6 +438,7 @@ export default function Home() {
                 onEditUser={onEditUser}
                 onDeleteUser={onDeleteUser}
                 onDeleteAnswer={onDeleteAnswer}
+                onToggle={toggle}
               />
             )}
 
