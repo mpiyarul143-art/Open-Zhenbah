@@ -208,7 +208,7 @@ export default function ThreadSidebar({
               />
               <span className="text-sm text-white/90">
                 <span className="font-medium">Made by</span>
-                <span className="font-bold ml-1" style={{ color: accent.primary }}>Niladri</span>
+                <span className="font-bold ml-1">Niladri</span>
               </span>
             </a>
           </div>
