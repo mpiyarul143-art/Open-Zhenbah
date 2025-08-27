@@ -76,6 +76,22 @@ const downloadImage = async (imageUrl: string, filename: string) => {
   }
 };
 
+// Small animated ellipsis used for loading labels
+function AnimatedEllipsis() {
+  const [dots, setDots] = useState('');
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setDots((d) => (d.length >= 3 ? '' : d + '.'));
+    }, 400);
+    return () => clearInterval(iv);
+  }, []);
+  return (
+    <span aria-live="polite" aria-label="loading">
+      {dots}
+    </span>
+  );
+}
+
 // Audio Player Component
 function ProgressBar({
   value,
@@ -167,6 +183,8 @@ const AudioPlayer = ({ audioUrl, filename }: { audioUrl: string; filename: strin
   const [duration, setDuration] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const prevBlobUrlRef = useRef<string | null>(null);
+  const [canPlay, setCanPlay] = useState<boolean>(false);
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -174,36 +192,104 @@ const AudioPlayer = ({ audioUrl, filename }: { audioUrl: string; filename: strin
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
+  // When audioUrl changes, build a playable URL and reset playback state
   useEffect(() => {
-    const createBlobUrl = async () => {
+    let cancelled = false;
+    const buildUrl = async () => {
+      setError(null);
+      setIsPlaying(false);
+      setDuration(null);
+      setCurrentTime(0);
+      setCanPlay(false);
+
+      const el = audioRef.current;
+      if (el) {
+        try {
+          el.pause();
+          el.currentTime = 0;
+        } catch {}
+      }
+
       try {
+        let nextUrl: string;
         if (audioUrl.startsWith('data:')) {
-          // Convert data URL to blob URL for better performance
           const response = await fetch(audioUrl);
           const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          setBlobUrl(url);
+          nextUrl = URL.createObjectURL(blob);
         } else {
-          // Use the URL directly if it's already a valid URL
-          setBlobUrl(audioUrl);
+          nextUrl = audioUrl;
         }
+        if (cancelled) return;
+
+        // Revoke previous blob URL if any
+        if (prevBlobUrlRef.current && prevBlobUrlRef.current.startsWith('blob:')) {
+          try {
+            URL.revokeObjectURL(prevBlobUrlRef.current);
+          } catch {}
+        }
+        prevBlobUrlRef.current = nextUrl.startsWith('blob:') ? nextUrl : null;
+        setBlobUrl(nextUrl);
       } catch (err) {
         console.error('Failed to create blob URL:', err);
+        if (cancelled) return;
         setError('Failed to load audio');
-        // Fallback to original URL
         setBlobUrl(audioUrl);
       }
     };
 
-    createBlobUrl();
-
-    // Cleanup blob URL on unmount
+    buildUrl();
     return () => {
-      if (blobUrl && blobUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(blobUrl);
-      }
+      cancelled = true;
     };
-  }, [audioUrl, blobUrl]);
+  }, [audioUrl]);
+
+  // Ensure the element reloads the new source and we wait for readiness
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el || !blobUrl) return;
+    setCanPlay(false);
+    try {
+      el.load();
+    } catch {}
+  }, [blobUrl]);
+
+  const playSafely = async () => {
+    const el = audioRef.current;
+    if (!el) return;
+    try {
+      // Wait for readiness if needed
+      if (el.readyState < 2) {
+        await new Promise<void>((resolve, reject) => {
+          const onReady = () => {
+            cleanup();
+            resolve();
+          };
+          const onErr = () => {
+            cleanup();
+            reject(new Error('Audio error'));
+          };
+          const cleanup = () => {
+            el.removeEventListener('canplay', onReady);
+            el.removeEventListener('error', onErr);
+          };
+          el.addEventListener('canplay', onReady, { once: true });
+          el.addEventListener('error', onErr, { once: true });
+          try {
+            el.load();
+          } catch {}
+        });
+      }
+      setCanPlay(true);
+      await el.play();
+    } catch (e: any) {
+      // Swallow AbortError which can occur if a new load interrupts play()
+      if (e && e.name === 'AbortError') {
+        console.warn('Play aborted due to new load');
+        return;
+      }
+      console.warn('Failed to play audio:', e);
+    }
+  };
 
   const downloadAudio = async () => {
     try {
@@ -321,6 +407,9 @@ const AudioPlayer = ({ audioUrl, filename }: { audioUrl: string; filename: strin
             }}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
+            onCanPlay={() => setCanPlay(true)}
+            onEnded={() => setIsPlaying(false)}
+            onError={() => setError('Failed to load audio')}
             className="hidden"
           />
 
@@ -342,9 +431,12 @@ const AudioPlayer = ({ audioUrl, filename }: { audioUrl: string; filename: strin
                 const el = audioRef.current;
                 if (!el) return;
                 if (el.paused) {
-                  el.play();
+                  // Only attempt play after we ensure readiness
+                  playSafely();
                 } else {
-                  el.pause();
+                  try {
+                    el.pause();
+                  } catch {}
                 }
               }}
               className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-white transition-transform duration-150 active:scale-95`}
@@ -452,10 +544,30 @@ const AudioPlayer = ({ audioUrl, filename }: { audioUrl: string; filename: strin
 export default function MarkdownLite({ text }: Props) {
   if (!text) return null;
 
-  // Check for audio content first
-  const audioMatch = text.match(/\[AUDIO:([^\]]+)\]/);
-  if (audioMatch) {
-    const audioUrl = audioMatch[1];
+  // Check for audio content first (supports multiple formats)
+  let audioUrl: string | undefined;
+  const tagMatch = text.match(/\[AUDIO:([^\]]+)\]/i);
+  if (tagMatch) {
+    audioUrl = tagMatch[1];
+  } else {
+    const prefixMatch = text.match(/^AUDIO:(.+)$/i);
+    if (prefixMatch) {
+      audioUrl = prefixMatch[1].trim();
+    } else if (/^data:audio\//i.test(text)) {
+      audioUrl = text.trim();
+    } else {
+      // Try to find inline data:audio anywhere in the text
+      const dataInline = text.match(/(data:audio\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+)/i);
+      if (dataInline) {
+        audioUrl = dataInline[1];
+      } else {
+        const urlMatch = text.match(/(https?:[^\s)]+\.(?:mp3|wav|m4a)(?:\?[^\s)]*)?)/i);
+        if (urlMatch) audioUrl = urlMatch[1];
+      }
+    }
+  }
+
+  if (audioUrl) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
     const filename = `openfiesta-audio-${timestamp}.mp3`;
 
@@ -561,6 +673,14 @@ function ImageWithSkeleton({ src, alt, filename }: { src: string; alt: string; f
   const [dimensions, setDimensions] = useState<{ w: number; h: number } | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
+  // Reset state whenever the image source changes (important when different models
+  // share an initial placeholder URL and later swap to their own URLs)
+  useEffect(() => {
+    setLoaded(false);
+    setFailed(false);
+    setDimensions(null);
+  }, [src]);
+
   useEffect(() => {
     if (!lightboxOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -618,7 +738,16 @@ function ImageWithSkeleton({ src, alt, filename }: { src: string; alt: string; f
                 boxShadow: '0 0 8px var(--accent-interactive-primary)',
               }}
             />
-            <span className="text-sm font-medium text-zinc-100">Generated Image</span>
+            <span className="text-sm font-medium text-zinc-100">
+              {loaded && !failed ? (
+                'Generated Image'
+              ) : (
+                <>
+                  Generating image
+                  <AnimatedEllipsis />
+                </>
+              )}
+            </span>
           </div>
           {dimensions && (
             <span className="text-[11px] text-zinc-400 tabular-nums">
@@ -731,12 +860,20 @@ function ImageWithSkeleton({ src, alt, filename }: { src: string; alt: string; f
 
               {/* Actual image */}
               <img
+                key={src}
                 src={src}
                 alt={alt}
                 onLoad={(e) => {
-                  setLoaded(true);
                   const el = e.currentTarget as HTMLImageElement;
-                  setDimensions({ w: el.naturalWidth, h: el.naturalHeight });
+                  const w = el.naturalWidth;
+                  const h = el.naturalHeight;
+                  setDimensions({ w, h });
+                  // Some providers briefly return a 1x1 (or tiny) placeholder asset.
+                  // Keep the skeleton (with breathing effect) until the image has meaningful size.
+                  const isTiny = w <= 2 && h <= 2;
+                  if (!isTiny) {
+                    setLoaded(true);
+                  }
                 }}
                 onError={() => setFailed(true)}
                 className={`w-full h-auto rounded-lg ${loaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300 shadow-[0_8px_22px_rgba(0,0,0,0.28)] cursor-zoom-in`}

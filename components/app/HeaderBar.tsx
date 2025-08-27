@@ -1,11 +1,11 @@
 'use client';
 import Image from 'next/image';
+import Link from 'next/link';
 import GithubStar from '@/components/app/GithubStar';
 import ThemeToggle from '@/components/ThemeToggle';
 import CustomModels from '@/components/modals/CustomModels';
 import Settings from '@/components/app/Settings';
-import { Layers } from 'lucide-react';
-import { Menu as MenuIcon } from 'lucide-react';
+import { Layers, Home, Menu as MenuIcon } from 'lucide-react';
 
 type Props = {
   onOpenMenu: () => void;
@@ -14,6 +14,8 @@ type Props = {
   githubRepo: string;
   className?: string;
   onOpenModelsModal?: () => void;
+  showCompareButton?: boolean;
+  hideHomeButton?: boolean;
 };
 
 export default function HeaderBar({
@@ -23,38 +25,32 @@ export default function HeaderBar({
   githubRepo,
   className,
   onOpenModelsModal,
+  showCompareButton = false,
+  hideHomeButton = false,
 }: Props) {
   return (
     <div className={['flex items-center mb-3 gap-2 w-full', className || ''].join(' ')}>
-      {/* Left: author + menu */}
+      {/* Left: menu + optional Compare button */}
       <div className="flex items-center gap-2 min-w-0">
         <button
           onClick={onOpenMenu}
-          className="lg:hidden inline-flex items-center justify-center h-7 w-8 rounded-md
-            bg-gray-200 border border-gray-300 text-gray-800 hover:bg-gray-300
-            dark:bg-white/10 dark:border-white/15 dark:text-white dark:hover:bg-white/20"
+          className="lg:hidden inline-flex items-center justify-center h-9 w-9 rounded-xl
+            bg-gradient-to-r from-white/12 to-white/8 border border-white/15 text-white hover:from-white/18 hover:to-white/12 hover:border-white/25 backdrop-blur-sm shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
           aria-label="Open menu"
           title="Menu"
         >
-          <MenuIcon size={16} />
+          <MenuIcon size={18} />
         </button>
 
-        <a
-          href="https://x.com/byteHumi"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 sm:px-2 sm:py-1 px-0 py-0 rounded-md hover:bg-black/5 dark:hover:bg-white/10"
-          title="Made by Niladri"
-        >
-          <Image
-            src="/image.png"
-            alt="Niladri profile"
-            width={24}
-            height={24}
-            className="rounded-full object-cover"
-          />
-          <span className="hidden sm:inline text-sm text-zinc-700 dark:text-zinc-200">Made by Niladri</span>
-        </a>
+        {showCompareButton && (
+          <Link
+            href="/compare"
+            className="inline-block ml-1 bg-red-950 text-red-400 border border-red-400 border-b-2 font-medium overflow-hidden relative px-2.5 py-1.5 rounded-md hover:brightness-150 hover:border-t-2 hover:border-b active:opacity-75 outline-none duration-300 group text-xs"
+          >
+            <span className="bg-red-400 shadow-red-400 absolute -top-[150%] left-0 inline-flex w-48 h-[3px] rounded-md opacity-50 group-hover:top-[150%] duration-500 shadow-[0_0_10px_10px_rgba(0,0,0,0.3)]"></span>
+            Compare Models
+          </Link>
+        )}
       </div>
 
       {/* Center: title stays centered in available space (hidden on mobile) */}
@@ -66,6 +62,17 @@ export default function HeaderBar({
 
       {/* Right cluster */}
       <div className="flex items-center gap-2 z-10 ml-auto">
+        {!hideHomeButton && (
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center h-9 w-9 rounded-xl
+              bg-gradient-to-r from-white/12 to-white/8 border border-white/15 text-white hover:from-white/18 hover:to-white/12 hover:border-white/25 backdrop-blur-sm shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
+            aria-label="Go to home"
+            title="Home"
+          >
+            <Home size={18} />
+          </Link>
+        )}
         <button
           onClick={() => onOpenModelsModal && onOpenModelsModal()}
           className="inline-flex items-center gap-1.5 text-xs h-9 w-9 justify-center rounded-md border border-black/15 dark:border-white/15 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 shadow accent-focus"

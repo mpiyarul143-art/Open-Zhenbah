@@ -18,7 +18,7 @@ export class ShareService {
   constructor(config: ShareServiceConfig = {}) {
     this.config = {
       baseUrl: config.baseUrl || (typeof window !== 'undefined' ? window.location.origin : ''),
-      maxUrlLength: config.maxUrlLength || 8000,
+      maxUrlLength: config.maxUrlLength || 16000, // Increased to accommodate full conversations
     };
   }
 
@@ -46,8 +46,8 @@ export class ShareService {
         };
       }
 
-      // Process the thread for sharing
-      const sharedData = this.processThreadForSharing(thread, projectName);
+      // Process the thread for sharing with progressive truncation
+      let sharedData = this.processThreadForSharing(thread, projectName);
 
       // Validate sanitized data
       if (!validateSanitizedData(sharedData)) {
@@ -57,7 +57,33 @@ export class ShareService {
         };
       }
 
-      // Check URL length
+      // Check URL length with progressive truncation (only if really necessary)
+      let attempts = 0;
+      const maxAttempts = 5; // Increased attempts
+      
+      while (isUrlTooLong(sharedData, this.config.baseUrl, this.config.maxUrlLength) && attempts < maxAttempts) {
+        attempts++;
+        // More conservative reduction - only reduce by 20% each time to preserve more content
+        const newMaxMessages = Math.max(5, Math.floor(sharedData.messages.length * 0.8)); 
+        
+        const truncationResult = truncateMessages(thread.messages, { 
+          maxMessages: newMaxMessages, 
+          preserveOrder: true, 
+          includeMetadata: true 
+        });
+        
+        const sanitizedMessages = sanitizeMessages(truncationResult.messages);
+        const sanitizedThread = sanitizeThreadForSharing(thread, projectName);
+        
+        sharedData = {
+          ...sanitizedThread,
+          messages: sanitizedMessages,
+          truncated: true,
+          originalMessageCount: truncationResult.originalCount,
+          originalUserMessageCount: truncationResult.originalUserMessageCount
+        };
+      }
+      
       if (isUrlTooLong(sharedData, this.config.baseUrl, this.config.maxUrlLength)) {
         return {
           success: false,

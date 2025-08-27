@@ -129,6 +129,6 @@ export function estimateUrlLength(data: SharedChatData, baseUrl: string = ''): n
 /**
  * Checks if the encoded data would exceed typical URL length limits
  */
-export function isUrlTooLong(data: SharedChatData, baseUrl: string = '', maxLength: number = 2000): boolean {
+export function isUrlTooLong(data: SharedChatData, baseUrl: string = '', maxLength: number = 8000): boolean {
   return estimateUrlLength(data, baseUrl) > maxLength;
 }

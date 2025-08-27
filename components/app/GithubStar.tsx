@@ -90,10 +90,10 @@ export default function GithubStar({ owner, repo, className }: Props) {
       <span className="h-6 w-6 md:h-6 md:w-6 rounded-full border border-gray-500 dark:border-white/15 bg-white/5 group-hover:bg-white/10 inline-flex items-center justify-center">
         <Github size={14} className="dark:text-white/90 text-gray-800" />
       </span>
-      {/* Middle: transparent label */}
+      {/* Middle: star icon always, label hidden on mobile */}
       <span className="inline-flex items-center gap-1 dark:text-white/90 text-gray-800">
         <Star size={14} className="text-yellow-300" />
-        <span>Star</span>
+        <span className="hidden sm:inline">Star</span>
       </span>
       {/* Right: count chip */}
       <span className="h-6 md:h-6 rounded-full border border-gray-500 dark:border-white/15 bg-white/5 group-hover:bg-white/10 inline-flex items-center justify-center px-2 tabular-nums dark:text-white/90 text-gray-800 min-w-[2.25rem] text-center font-medium">

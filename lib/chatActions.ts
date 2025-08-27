@@ -3,6 +3,7 @@ import { safeUUID } from './uuid';
 import type { AiModel, ApiKeys, ChatMessage, ChatThread } from './types';
 import type { Project } from './projects';
 import { toast } from 'react-toastify';
+import { addMessage as addMessageDb, updateThreadTitle } from './data';
 
 const abortControllers: Record<string, AbortController> = {};
 
@@ -30,6 +31,8 @@ export type ChatDeps = {
   setLoadingIdsInit: (ids: string[]) => void;
   activeProject?: Project | null;
   selectedVoice?: string;
+  userId?: string;
+  pageType?: 'home' | 'compare';
 };
 
 type ApiTextResult = {
@@ -61,6 +64,8 @@ export function createChatActions({
   setLoadingIdsInit,
   activeProject,
   selectedVoice,
+  userId,
+  pageType,
 }: ChatDeps) {
   function ensureThread(): ChatThread {
     if (activeThread) return activeThread;
@@ -69,6 +74,8 @@ export function createChatActions({
       title: 'New Chat',
       messages: [],
       createdAt: Date.now(),
+      projectId: activeProject?.id,
+      pageType: pageType,
     };
     setThreads((prev) => [t, ...prev]);
     setActiveId(t.id);
@@ -117,41 +124,36 @@ export function createChatActions({
     const userMsg: ChatMessage = { role: 'user', content: prompt, ts: Date.now() };
     const thread = ensureThread();
     const nextHistory = [...(thread.messages ?? []), userMsg];
+    const newTitle = thread.title === 'New Chat' ? prompt.slice(0, 40) : thread.title;
     setThreads((prev) =>
       prev.map((t) =>
         t.id === thread.id
           ? {
               ...t,
-              title: thread.title === 'New Chat' ? prompt.slice(0, 40) : t.title,
+              title: newTitle,
               messages: nextHistory,
             }
           : t,
       ),
     );
+    
+    // Update thread title in database if it changed
+    if (userId && thread.id && newTitle !== thread.title) {
+      try {
+        await updateThreadTitle(userId, thread.id, newTitle);
+      } catch (e) {
+        console.error('Failed to update thread title in DB:', e);
+      }
+    }
 
-    setLoadingIdsInit(selectedModels.map((m) => m.id));
+    // Skip internal loading - using ChatInterface loading animation instead
+    // setLoadingIdsInit(selectedModels.map((m) => m.id));
     await Promise.allSettled(
       selectedModels.map(async (m) => {
         const controller = new AbortController();
         abortControllers[m.id] = controller;
         try {
           if (m.provider === 'gemini') {
-            // create placeholder for typing animation
-            const placeholderTs = Date.now();
-            const placeholder: ChatMessage = {
-              role: 'assistant',
-              content: '',
-              modelId: m.id,
-              ts: placeholderTs,
-            };
-            setThreads((prev) =>
-              prev.map((t) =>
-                t.id === thread.id
-                  ? { ...t, messages: [...(t.messages ?? nextHistory), placeholder] }
-                  : t,
-              ),
-            );
-
             const res = await callGemini({
               apiKey: keys.gemini || undefined,
               model: m.model,
@@ -160,111 +162,29 @@ export function createChatActions({
               signal: controller.signal,
             });
             const full = String(extractText(res) || '').trim();
-            if (!full) {
+            if (full) {
+              // Add placeholder for super fast typing animation
+              const placeholderTs = Date.now();
+              const placeholder: ChatMessage = {
+                role: 'assistant',
+                content: '',
+                modelId: m.id,
+                ts: placeholderTs,
+              };
               setThreads((prev) =>
-                prev.map((t) => {
-                  if (t.id !== thread.id) return t;
-                  const msgs = (t.messages ?? []).map((msg) =>
-                    msg.ts === placeholderTs && msg.modelId === m.id
-                      ? { ...msg, content: 'No response' }
-                      : msg,
-                  );
-                  return { ...t, messages: msgs };
-                }),
+                prev.map((t) =>
+                  t.id === thread.id
+                    ? { ...t, messages: [...(t.messages ?? nextHistory), placeholder] }
+                    : t,
+                ),
               );
-            } else {
-              // typewriter effect
+              
+              // Super fast typing effect with requestAnimationFrame for smooth scrolling
               let i = 0;
-              const step = Math.max(2, Math.ceil(full.length / 80));
-              const timer = window.setInterval(() => {
-                i = Math.min(full.length, i + step);
-                const chunk = full.slice(0, i);
-                setThreads((prev) =>
-                  prev.map((t) => {
-                    if (t.id !== thread.id) return t;
-                    const msgs = (t.messages ?? []).map((msg) =>
-                      msg.ts === placeholderTs && msg.modelId === m.id
-                        ? { ...msg, content: chunk }
-                        : msg,
-                    );
-                    return { ...t, messages: msgs };
-                  }),
-                );
-                if (i >= full.length) window.clearInterval(timer);
-              }, 24);
-            }
-          } else if (m.provider === 'open-provider') {
-            // create placeholder for typing animation
-            const placeholderTs = Date.now();
-            const placeholder: ChatMessage = {
-              role: 'assistant',
-              content: '',
-              modelId: m.id,
-              ts: placeholderTs,
-            };
-            setThreads((prev) =>
-              prev.map((t) =>
-                t.id === thread.id
-                  ? { ...t, messages: [...(t.messages ?? nextHistory), placeholder] }
-                  : t,
-              ),
-            );
-
-            const res = await callOpenProvider({
-              apiKey: keys['open-provider'] || undefined,
-              model: m.model,
-              messages: prepareMessages(nextHistory),
-              imageDataUrl,
-              voice: selectedVoice,
-            });
-            const full = String(extractText(res) || '').trim();
-            if (!full) {
-              setThreads((prev) =>
-                prev.map((t) => {
-                  if (t.id !== thread.id) return t;
-                  const msgs = (t.messages ?? []).map((msg) =>
-                    msg.ts === placeholderTs && msg.modelId === m.id
-                      ? ({
-                          ...msg,
-                          content: 'No response',
-                          provider: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.provider,
-                          usedKeyType: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.usedKeyType,
-                          tokens: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.tokens,
-                        } as ChatMessage)
-                      : msg,
-                  );
-                  return { ...t, messages: msgs };
-                }),
-              );
-            } else {
-              // Check if this is image or audio generation - skip typewriter effect for these
-              const isImageGeneration = full.startsWith('![') && full.includes('](');
-              const isAudioGeneration = full.startsWith('[AUDIO:') && full.endsWith(']');
-
-              if (isImageGeneration || isAudioGeneration) {
-                // Show image/audio content immediately without typewriter effect
-                setThreads((prev) =>
-                  prev.map((t) => {
-                    if (t.id !== thread.id) return t;
-                    const msgs = (t.messages ?? []).map((msg) =>
-                      msg.ts === placeholderTs && msg.modelId === m.id
-                        ? ({
-                            ...msg,
-                            content: full,
-                            provider: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.provider,
-                            usedKeyType: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.usedKeyType,
-                            tokens: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.tokens,
-                          } as ChatMessage)
-                        : msg,
-                    );
-                    return { ...t, messages: msgs };
-                  }),
-                );
-              } else {
-                // typewriter effect for text models
-                let i = 0;
-                const step = Math.max(2, Math.ceil(full.length / 80));
-                const timer = window.setInterval(() => {
+              const step = Math.max(2, Math.ceil(full.length / 40)); // Smaller steps for smoother animation
+              let lastUpdate = 0;
+              const animate = (timestamp: number) => {
+                if (timestamp - lastUpdate >= 12) { // Throttle to ~83fps for smoothness
                   i = Math.min(full.length, i + step);
                   const chunk = full.slice(0, i);
                   setThreads((prev) =>
@@ -278,45 +198,102 @@ export function createChatActions({
                       return { ...t, messages: msgs };
                     }),
                   );
-                  if (i >= full.length) {
-                    window.clearInterval(timer);
-                    // attach provider meta and token info once complete
-                    setThreads((prev) =>
-                      prev.map((t) => {
-                        if (t.id !== thread.id) return t;
-                        const msgs = (t.messages ?? []).map((msg) =>
-                          msg.ts === placeholderTs && msg.modelId === m.id
-                            ? ({
-                                ...msg,
-                                provider: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.provider,
-                                usedKeyType: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.usedKeyType,
-                                tokens: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.tokens,
-                              } as ChatMessage)
-                            : msg,
-                        );
-                        return { ...t, messages: msgs };
-                      }),
+                  lastUpdate = timestamp;
+                }
+                
+                if (i < full.length) {
+                  requestAnimationFrame(animate);
+                } else {
+                  // Save to database after typing completes
+                  if (userId && thread.id) {
+                    const finalMsg: ChatMessage = {
+                      role: 'assistant',
+                      content: full,
+                      modelId: m.id,
+                      ts: placeholderTs,
+                    };
+                    addMessageDb({ userId, chatId: thread.id, message: finalMsg }).catch(e => 
+                      console.error('Failed to save assistant message to DB:', e)
                     );
                   }
-                }, 24);
-              }
+                }
+              };
+              requestAnimationFrame(animate);
+            }
+          } else if (m.provider === 'open-provider') {
+            // No placeholder - using ChatInterface loading animation
+
+            const res = await callOpenProvider({
+              apiKey: keys['open-provider'] || undefined,
+              model: m.model,
+              messages: prepareMessages(nextHistory),
+              imageDataUrl,
+              voice: selectedVoice,
+            });
+            const full = String(extractText(res) || '').trim();
+            if (full) {
+              // Add placeholder for super fast typing animation
+              const placeholderTs = Date.now();
+              const placeholder: ChatMessage = {
+                role: 'assistant',
+                content: '',
+                modelId: m.id,
+                ts: placeholderTs,
+              };
+              setThreads((prev) =>
+                prev.map((t) =>
+                  t.id === thread.id
+                    ? { ...t, messages: [...(t.messages ?? nextHistory), placeholder] }
+                    : t,
+                ),
+              );
+              
+              // Super fast typing effect with requestAnimationFrame for smooth scrolling
+              let i = 0;
+              const step = Math.max(2, Math.ceil(full.length / 40)); // Smaller steps for smoother animation
+              let lastUpdate = 0;
+              const animate = (timestamp: number) => {
+                if (timestamp - lastUpdate >= 12) { // Throttle to ~83fps for smoothness
+                  i = Math.min(full.length, i + step);
+                  const chunk = full.slice(0, i);
+                  setThreads((prev) =>
+                    prev.map((t) => {
+                      if (t.id !== thread.id) return t;
+                      const msgs = (t.messages ?? []).map((msg) =>
+                        msg.ts === placeholderTs && msg.modelId === m.id
+                          ? { ...msg, content: chunk, provider: (res as any)?.provider, usedKeyType: (res as any)?.usedKeyType, tokens: (res as any)?.tokens }
+                          : msg,
+                      );
+                      return { ...t, messages: msgs };
+                    }),
+                  );
+                  lastUpdate = timestamp;
+                }
+                
+                if (i < full.length) {
+                  requestAnimationFrame(animate);
+                } else {
+                  // Save to database after typing completes
+                  if (userId && thread.id) {
+                    const finalMsg: ChatMessage = {
+                      role: 'assistant',
+                      content: full,
+                      modelId: m.id,
+                      ts: placeholderTs,
+                      provider: (res as any)?.provider,
+                      usedKeyType: (res as any)?.usedKeyType,
+                      tokens: (res as any)?.tokens,
+                    };
+                    addMessageDb({ userId, chatId: thread.id, message: finalMsg }).catch(e => 
+                      console.error('Failed to save open-provider assistant message to DB:', e)
+                    );
+                  }
+                }
+              };
+              requestAnimationFrame(animate);
             }
           } else if (m.provider === 'unstable') {
-            // create placeholder for typing animation
-            const placeholderTs = Date.now();
-            const placeholder: ChatMessage = {
-              role: 'assistant',
-              content: '',
-              modelId: m.id,
-              ts: placeholderTs,
-            };
-            setThreads((prev) =>
-              prev.map((t) =>
-                t.id === thread.id
-                  ? { ...t, messages: [...(t.messages ?? nextHistory), placeholder] }
-                  : t,
-              ),
-            );
+            // No placeholder - using ChatInterface loading animation
 
             const res = await callUnstable({
               apiKey: keys['unstable'] || undefined,
@@ -324,185 +301,294 @@ export function createChatActions({
               messages: prepareMessages(nextHistory),
               imageDataUrl,
             });
+            
+            let content = '';
             if (res && typeof (res as { error?: unknown })?.error === 'string') {
-              const errText = String((res as { error: unknown }).error).trim();
-              setThreads((prev) =>
-                prev.map((t) => {
-                  if (t.id !== thread.id) return t;
-                  const msgs = (t.messages ?? []).map((msg) =>
-                    msg.ts === placeholderTs && msg.modelId === m.id
-                      ? ({
-                          ...msg,
-                          content: errText,
-                          provider: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.provider,
-                          usedKeyType: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.usedKeyType,
-                          code: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.code,
-                        } as ChatMessage)
-                      : msg,
-                  );
-                  return { ...t, messages: msgs };
-                }),
-              );
-              return;
-            }
-            const full = String(extractText(res) || '').trim();
-            if (!full) {
-              setThreads((prev) =>
-                prev.map((t) => {
-                  if (t.id !== thread.id) return t;
-                  const msgs = (t.messages ?? []).map((msg) =>
-                    msg.ts === placeholderTs && msg.modelId === m.id
-                      ? ({
-                          ...msg,
-                          content: 'No response',
-                          provider: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.provider,
-                          usedKeyType: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.usedKeyType,
-                          tokens: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.tokens,
-                        } as ChatMessage)
-                      : msg,
-                  );
-                  return { ...t, messages: msgs };
-                }),
-              );
+              content = String((res as { error: unknown }).error).trim();
             } else {
-              // typewriter effect for unstable models
+              content = String(extractText(res) || '').trim() || 'No response';
+            }
+            
+            if (content) {
+              // Add placeholder for super fast typing animation
+              const placeholderTs = Date.now();
+              const placeholder: ChatMessage = {
+                role: 'assistant',
+                content: '',
+                modelId: m.id,
+                ts: placeholderTs,
+              };
+              setThreads((prev) =>
+                prev.map((t) =>
+                  t.id === thread.id
+                    ? { ...t, messages: [...(t.messages ?? nextHistory), placeholder] }
+                    : t,
+                ),
+              );
+              
+              // Super fast typing effect with requestAnimationFrame for smooth scrolling
               let i = 0;
-              const step = Math.max(2, Math.ceil(full.length / 80));
-              const timer = window.setInterval(() => {
-                i = Math.min(full.length, i + step);
-                const chunk = full.slice(0, i);
-                setThreads((prev) =>
-                  prev.map((t) => {
-                    if (t.id !== thread.id) return t;
-                    const msgs = (t.messages ?? []).map((msg) =>
-                      msg.ts === placeholderTs && msg.modelId === m.id
-                        ? { ...msg, content: chunk }
-                        : msg,
-                    );
-                    return { ...t, messages: msgs };
-                  }),
-                );
-                if (i >= full.length) {
-                  window.clearInterval(timer);
-                  // attach provider meta and token info once complete
+              const step = Math.max(2, Math.ceil(content.length / 40)); // Smaller steps for smoother animation
+              let lastUpdate = 0;
+              const animate = (timestamp: number) => {
+                if (timestamp - lastUpdate >= 12) { // Throttle to ~83fps for smoothness
+                  i = Math.min(content.length, i + step);
+                  const chunk = content.slice(0, i);
                   setThreads((prev) =>
                     prev.map((t) => {
                       if (t.id !== thread.id) return t;
                       const msgs = (t.messages ?? []).map((msg) =>
                         msg.ts === placeholderTs && msg.modelId === m.id
-                          ? ({
-                              ...msg,
-                              provider: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.provider,
-                              usedKeyType: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.usedKeyType,
-                              tokens: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.tokens,
-                            } as ChatMessage)
+                          ? { ...msg, content: chunk }
                           : msg,
                       );
                       return { ...t, messages: msgs };
                     }),
                   );
+                  lastUpdate = timestamp;
                 }
-              }, 24);
+                
+                if (i < content.length) {
+                  requestAnimationFrame(animate);
+                } else {
+                  // Save to database after typing completes
+                  if (userId && thread.id) {
+                    const finalMsg: ChatMessage = {
+                      role: 'assistant',
+                      content,
+                      modelId: m.id,
+                      ts: placeholderTs,
+                    };
+                    addMessageDb({ userId, chatId: thread.id, message: finalMsg }).catch(e => 
+                      console.error('Failed to save unstable assistant message to DB:', e)
+                    );
+                  }
+                }
+              };
+              requestAnimationFrame(animate);
+            } else {
+              // Add response directly without typewriter effect
+              const assistantMsg: ChatMessage = {
+                role: 'assistant',
+                content,
+                modelId: m.id,
+                ts: Date.now(),
+                provider: (res as any)?.provider,
+                usedKeyType: (res as any)?.usedKeyType,
+                tokens: (res as any)?.tokens,
+                code: (res as any)?.code,
+              };
+              setThreads((prev) =>
+                prev.map((t) =>
+                  t.id === thread.id
+                    ? { ...t, messages: [...(t.messages ?? nextHistory), assistantMsg] }
+                    : t,
+                ),
+              );
+              
+              // Save to database
+              if (userId && thread.id) {
+                try {
+                  await addMessageDb({
+                    userId,
+                    chatId: thread.id,
+                    message: assistantMsg,
+                  });
+                } catch (e) {
+                  console.error('Failed to save unstable assistant message to DB:', e);
+                }
+              }
             }
           } else if (m.provider === 'mistral') {
-            // create placeholder for typing animation
-            const placeholderTs = Date.now();
-            const placeholder: ChatMessage = {
-              role: 'assistant',
-              content: '',
-              modelId: m.id,
-              ts: placeholderTs,
-            };
-            setThreads((prev) =>
-              prev.map((t) =>
-                t.id === thread.id
-                  ? { ...t, messages: [...(t.messages ?? nextHistory), placeholder] }
-                  : t,
-              ),
-            );
+            // No placeholder - using ChatInterface loading animation
 
-          const res = await callMistral({ apiKey: keys['mistral'] || undefined, model: m.model, messages: prepareMessages(nextHistory), imageDataUrl });
-          const full = String(extractText(res) || '').trim();
-          if (!full) {
-            setThreads(prev => prev.map(t => {
-              if (t.id !== thread.id) return t;
-              const msgs = (t.messages ?? []).map(msg => (msg.ts === placeholderTs && msg.modelId === m.id)
-                ? { ...msg, content: 'No response', provider: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.provider, usedKeyType: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.usedKeyType, tokens: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.tokens } as ChatMessage
-                : msg);
-              return { ...t, messages: msgs };
-            }));
-          } else {
-            // typewriter effect for mistral models
-            let i = 0;
-            const step = Math.max(2, Math.ceil(full.length / 80));
-            const timer = window.setInterval(() => {
-              i = Math.min(full.length, i + step);
-              const chunk = full.slice(0, i);
-              setThreads(prev => prev.map(t => {
-                if (t.id !== thread.id) return t;
-                const msgs = (t.messages ?? []).map(msg => (msg.ts === placeholderTs && msg.modelId === m.id) ? { ...msg, content: chunk } : msg);
-                return { ...t, messages: msgs };
-              }));
-              if (i >= full.length) {
-                window.clearInterval(timer);
-                // attach provider meta and token info once complete
-                setThreads(prev => prev.map(t => {
-                  if (t.id !== thread.id) return t;
-                  const msgs = (t.messages ?? []).map(msg => (msg.ts === placeholderTs && msg.modelId === m.id)
-                    ? { ...msg, provider: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.provider, usedKeyType: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.usedKeyType, tokens: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.tokens } as ChatMessage
-                    : msg);
-                  return { ...t, messages: msgs };
-                }));
+            const res = await callMistral({ apiKey: keys['mistral'] || undefined, model: m.model, messages: prepareMessages(nextHistory), imageDataUrl });
+            const full = String(extractText(res) || '').trim() || 'No response';
+            if (full) {
+              // Add placeholder for super fast typing animation
+              const placeholderTs = Date.now();
+              const placeholder: ChatMessage = {
+                role: 'assistant',
+                content: '',
+                modelId: m.id,
+                ts: placeholderTs,
+              };
+              setThreads((prev) =>
+                prev.map((t) =>
+                  t.id === thread.id
+                    ? { ...t, messages: [...(t.messages ?? nextHistory), placeholder] }
+                    : t,
+                ),
+              );
+              
+              // Super fast typing effect with requestAnimationFrame for smooth scrolling
+              let i = 0;
+              const step = Math.max(2, Math.ceil(full.length / 40)); // Smaller steps for smoother animation
+              let lastUpdate = 0;
+              const animate = (timestamp: number) => {
+                if (timestamp - lastUpdate >= 12) { // Throttle to ~83fps for smoothness
+                  i = Math.min(full.length, i + step);
+                  const chunk = full.slice(0, i);
+                  setThreads((prev) =>
+                    prev.map((t) => {
+                      if (t.id !== thread.id) return t;
+                      const msgs = (t.messages ?? []).map((msg) =>
+                        msg.ts === placeholderTs && msg.modelId === m.id
+                          ? { ...msg, content: chunk }
+                          : msg,
+                      );
+                      return { ...t, messages: msgs };
+                    }),
+                  );
+                  lastUpdate = timestamp;
+                }
+                
+                if (i < full.length) {
+                  requestAnimationFrame(animate);
+                } else {
+                  // Save to database after typing completes
+                  if (userId && thread.id) {
+                    const finalMsg: ChatMessage = {
+                      role: 'assistant',
+                      content: full,
+                      modelId: m.id,
+                      ts: placeholderTs,
+                    };
+                    addMessageDb({ userId, chatId: thread.id, message: finalMsg }).catch(e => 
+                      console.error('Failed to save mistral assistant message to DB:', e)
+                    );
+                  }
+                }
+              };
+              requestAnimationFrame(animate);
+            } else {
+              // Add response directly without typewriter effect
+              const assistantMsg: ChatMessage = {
+                role: 'assistant',
+                content: full,
+                modelId: m.id,
+                ts: Date.now(),
+                provider: (res as any)?.provider,
+                usedKeyType: (res as any)?.usedKeyType,
+                tokens: (res as any)?.tokens,
+              };
+              setThreads((prev) =>
+                prev.map((t) =>
+                  t.id === thread.id
+                    ? { ...t, messages: [...(t.messages ?? nextHistory), assistantMsg] }
+                    : t,
+                ),
+              );
+              
+              // Save to database
+              if (userId && thread.id) {
+                try {
+                  await addMessageDb({
+                    userId,
+                    chatId: thread.id,
+                    message: assistantMsg,
+                  });
+                } catch (e) {
+                  console.error('Failed to save mistral assistant message to DB:', e);
+                }
               }
-            }, 24);
-          }
-        } else if (m.provider === 'ollama') {
-          // create placeholder for typing animation
-          const placeholderTs = Date.now();
-          const placeholder: ChatMessage = { role: 'assistant', content: '', modelId: m.id, ts: placeholderTs };
-          setThreads(prev => prev.map(t => t.id === thread.id ? { ...t, messages: [...(t.messages ?? nextHistory), placeholder] } : t));
+            }
+          } else if (m.provider === 'ollama') {
+            // No placeholder - using ChatInterface loading animation
 
-          const res = await callOllama({ baseUrl: keys['ollama'] || undefined, model: m.model, messages: prepareMessages(nextHistory), signal: controller.signal });
-          const full = String(extractText(res) || '').trim();
-          // Check for empty response or literal "No response"
-          if (!full || full === 'No response') {
-            setThreads(prev => prev.map(t => {
-              if (t.id !== thread.id) return t;
-              const msgs = (t.messages ?? []).map(msg => (msg.ts === placeholderTs && msg.modelId === m.id)
-                ? { ...msg, content: 'No response', provider: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.provider, usedKeyType: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.usedKeyType, tokens: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.tokens } as ChatMessage
-                : msg);
-              return { ...t, messages: msgs };
-            }));
-          } else {
-            // typewriter effect for ollama models
-            let i = 0;
-            const step = Math.max(2, Math.ceil(full.length / 80));
-            const timer = window.setInterval(() => {
-              i = Math.min(full.length, i + step);
-              const chunk = full.slice(0, i);
-              setThreads(prev => prev.map(t => {
-                if (t.id !== thread.id) return t;
-                const msgs = (t.messages ?? []).map(msg => (msg.ts === placeholderTs && msg.modelId === m.id) ? { ...msg, content: chunk } : msg);
-                return { ...t, messages: msgs };
-              }));
-              if (i >= full.length) {
-                window.clearInterval(timer);
-                // attach provider meta and token info once complete
-                setThreads(prev => prev.map(t => {
-                  if (t.id !== thread.id) return t;
-                  const msgs = (t.messages ?? []).map(msg => (msg.ts === placeholderTs && msg.modelId === m.id)
-                    ? { ...msg, provider: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.provider, usedKeyType: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.usedKeyType, tokens: (res as { provider?: string; usedKeyType?: 'user' | 'shared' | 'none'; tokens?: object; code?: number; error?: string })?.tokens } as ChatMessage
-                    : msg);
-                  return { ...t, messages: msgs };
-                }));
+            const res = await callOllama({ baseUrl: keys['ollama'] || undefined, model: m.model, messages: prepareMessages(nextHistory), signal: controller.signal });
+            const full = String(extractText(res) || '').trim() || 'No response';
+            if (full) {
+              // Add placeholder for super fast typing animation
+              const placeholderTs = Date.now();
+              const placeholder: ChatMessage = {
+                role: 'assistant',
+                content: '',
+                modelId: m.id,
+                ts: placeholderTs,
+              };
+              setThreads((prev) =>
+                prev.map((t) =>
+                  t.id === thread.id
+                    ? { ...t, messages: [...(t.messages ?? nextHistory), placeholder] }
+                    : t,
+                ),
+              );
+              
+              // Super fast typing effect with requestAnimationFrame for smooth scrolling
+              let i = 0;
+              const step = Math.max(2, Math.ceil(full.length / 40)); // Smaller steps for smoother animation
+              let lastUpdate = 0;
+              const animate = (timestamp: number) => {
+                if (timestamp - lastUpdate >= 12) { // Throttle to ~83fps for smoothness
+                  i = Math.min(full.length, i + step);
+                  const chunk = full.slice(0, i);
+                  setThreads((prev) =>
+                    prev.map((t) => {
+                      if (t.id !== thread.id) return t;
+                      const msgs = (t.messages ?? []).map((msg) =>
+                        msg.ts === placeholderTs && msg.modelId === m.id
+                          ? { ...msg, content: chunk }
+                          : msg,
+                      );
+                      return { ...t, messages: msgs };
+                    }),
+                  );
+                  lastUpdate = timestamp;
+                }
+                
+                if (i < full.length) {
+                  requestAnimationFrame(animate);
+                } else {
+                  // Save to database after typing completes
+                  if (userId && thread.id) {
+                    const finalMsg: ChatMessage = {
+                      role: 'assistant',
+                      content: full,
+                      modelId: m.id,
+                      ts: placeholderTs,
+                    };
+                    addMessageDb({ userId, chatId: thread.id, message: finalMsg }).catch(e => 
+                      console.error('Failed to save ollama assistant message to DB:', e)
+                    );
+                  }
+                }
+              };
+              requestAnimationFrame(animate);
+            } else {
+              // Add response directly without typewriter effect
+              const assistantMsg: ChatMessage = {
+                role: 'assistant',
+                content: full,
+                modelId: m.id,
+                ts: Date.now(),
+                provider: (res as any)?.provider,
+                usedKeyType: (res as any)?.usedKeyType,
+                tokens: (res as any)?.tokens,
+              };
+              setThreads((prev) =>
+                prev.map((t) =>
+                  t.id === thread.id
+                    ? { ...t, messages: [...(t.messages ?? nextHistory), assistantMsg] }
+                    : t,
+                ),
+              );
+              
+              // Save to database
+              if (userId && thread.id) {
+                try {
+                  await addMessageDb({
+                    userId,
+                    chatId: thread.id,
+                    message: assistantMsg,
+                  });
+                } catch (e) {
+                  console.error('Failed to save ollama assistant message to DB:', e);
+                }
               }
-            }, 24);
-          }
-        } else {
-          const placeholderTs = Date.now();
-          const initialText = 'Thinking…';
-          const placeholder: ChatMessage = { role: 'assistant', content: initialText, modelId: m.id, ts: placeholderTs };
-          setThreads(prev => prev.map(t => t.id === thread.id ? { ...t, messages: [...(t.messages ?? nextHistory), placeholder] } : t));
+            }
+          } else {
+            // No placeholder - using ChatInterface loading animation
 
             let buffer = '';
             let flushTimer: number | null = null;
@@ -511,18 +597,7 @@ export function createChatActions({
               if (!buffer) return;
               const chunk = buffer;
               buffer = '';
-              setThreads((prev) =>
-                prev.map((t) => {
-                  if (t.id !== thread.id) return t;
-                  const msgs = (t.messages ?? []).map((msg) => {
-                    if (!(msg.ts === placeholderTs && msg.modelId === m.id)) return msg;
-                    const cur = msg.content || '';
-                    const next = cur === initialText ? chunk : cur + chunk;
-                    return { ...msg, content: next };
-                  });
-                  return { ...t, messages: msgs };
-                }),
-              );
+              // Skip updating placeholder - using ChatInterface loading animation instead
             };
             const mt =
               typeof imageDataUrl === 'string'
@@ -540,18 +615,65 @@ export function createChatActions({
                 imageDataUrl,
                 signal: controller.signal,
               });
-              const text = extractText(res);
-              setThreads((prev) =>
-                prev.map((t) => {
-                  if (t.id !== thread.id) return t;
-                  const msgs = (t.messages ?? []).map((msg) =>
-                    msg.ts === placeholderTs && msg.modelId === m.id
-                      ? { ...msg, content: String(text).trim() }
-                      : msg,
-                  );
-                  return { ...t, messages: msgs };
-                }),
-              );
+              const full = String(extractText(res) || '').trim();
+              if (full) {
+                // Add placeholder for super fast typing animation
+                const placeholderTs = Date.now();
+                const placeholder: ChatMessage = {
+                  role: 'assistant',
+                  content: '',
+                  modelId: m.id,
+                  ts: placeholderTs,
+                };
+                setThreads((prev) =>
+                  prev.map((t) =>
+                    t.id === thread.id
+                      ? { ...t, messages: [...(t.messages ?? nextHistory), placeholder] }
+                      : t,
+                  ),
+                );
+                
+                // Super fast typing effect with requestAnimationFrame for smooth scrolling
+                let i = 0;
+                const step = Math.max(2, Math.ceil(full.length / 40)); // Smaller steps for smoother animation
+                let lastUpdate = 0;
+                const animate = (timestamp: number) => {
+                  if (timestamp - lastUpdate >= 12) { // Throttle to ~83fps for smoothness
+                    i = Math.min(full.length, i + step);
+                    const chunk = full.slice(0, i);
+                    setThreads((prev) =>
+                      prev.map((t) => {
+                        if (t.id !== thread.id) return t;
+                        const msgs = (t.messages ?? []).map((msg) =>
+                          msg.ts === placeholderTs && msg.modelId === m.id
+                            ? { ...msg, content: chunk }
+                            : msg,
+                        );
+                        return { ...t, messages: msgs };
+                      }),
+                    );
+                    lastUpdate = timestamp;
+                  }
+                  
+                  if (i < full.length) {
+                    requestAnimationFrame(animate);
+                  } else {
+                    // Save to database after typing completes
+                    if (userId && thread.id) {
+                      const finalMsg: ChatMessage = {
+                        role: 'assistant',
+                        content: full,
+                        modelId: m.id,
+                        ts: placeholderTs,
+                      };
+                      addMessageDb({ userId, chatId: thread.id, message: finalMsg }).catch(e => 
+                        console.error('Failed to save openrouter assistant message to DB:', e)
+                      );
+                    }
+                  }
+                };
+                requestAnimationFrame(animate);
+              }
               return;
             }
 
@@ -567,59 +689,80 @@ export function createChatActions({
                 onToken: (delta) => {
                   gotAny = true;
                   buffer += delta;
-                  if (flushTimer == null)
-                    flushTimer = window.setTimeout(() => {
-                      flushTimer = null;
-                      flush();
-                    }, 24);
+                  // Skip token-by-token updates - using ChatInterface loading animation instead
                 },
                 onMeta: (meta) => {
-                  setThreads((prev) =>
-                    prev.map((t) => {
-                      if (t.id !== thread.id) return t;
-                      const msgs = (t.messages ?? []).map((msg) =>
-                        msg.ts === placeholderTs && msg.modelId === m.id
-                          ? ({
-                              ...msg,
-                              provider: meta.provider,
-                              usedKeyType: meta.usedKeyType,
-                            } as ChatMessage)
-                          : msg,
-                      );
-                      return { ...t, messages: msgs };
-                    }),
-                  );
+                  // Skip meta updates - using ChatInterface loading animation instead
                 },
                 onError: (err) => {
-                  if (flushTimer != null) {
-                    window.clearTimeout(flushTimer);
-                    flushTimer = null;
-                  }
-                  const text = err.error || 'Error';
-                  setThreads((prev) =>
-                    prev.map((t) => {
-                      if (t.id !== thread.id) return t;
-                      const msgs = (t.messages ?? []).map((msg) =>
-                        msg.ts === placeholderTs && msg.modelId === m.id
-                          ? ({
-                              ...msg,
-                              content: text,
-                              code: err.code,
-                              provider: err.provider,
-                              usedKeyType: err.usedKeyType,
-                            } as ChatMessage)
-                          : msg,
-                      );
-                      return { ...t, messages: msgs };
-                    }),
-                  );
+                  // Skip error updates - using ChatInterface loading animation instead
                 },
                 onDone: async () => {
                   if (flushTimer != null) {
                     window.clearTimeout(flushTimer);
                     flushTimer = null;
                   }
-                  flush();
+                  
+                  // Add placeholder for super fast typing animation
+                  const fullResponse = buffer.trim();
+                  if (fullResponse) {
+                    const placeholderTs = Date.now();
+                    const placeholder: ChatMessage = {
+                      role: 'assistant',
+                      content: '',
+                      modelId: m.id,
+                      ts: placeholderTs,
+                    };
+                    setThreads((prev) =>
+                      prev.map((t) =>
+                        t.id === thread.id
+                          ? { ...t, messages: [...(t.messages ?? nextHistory), placeholder] }
+                          : t,
+                      ),
+                    );
+                    
+                    // Super fast typing effect with requestAnimationFrame for smooth scrolling
+                    let i = 0;
+                    const step = Math.max(2, Math.ceil(fullResponse.length / 40)); // Smaller steps for smoother animation
+                    let lastUpdate = 0;
+                    const animate = (timestamp: number) => {
+                      if (timestamp - lastUpdate >= 12) { // Throttle to ~83fps for smoothness
+                        i = Math.min(fullResponse.length, i + step);
+                        const chunk = fullResponse.slice(0, i);
+                        setThreads((prev) =>
+                          prev.map((t) => {
+                            if (t.id !== thread.id) return t;
+                            const msgs = (t.messages ?? []).map((msg) =>
+                              msg.ts === placeholderTs && msg.modelId === m.id
+                                ? { ...msg, content: chunk }
+                                : msg,
+                            );
+                            return { ...t, messages: msgs };
+                          }),
+                        );
+                        lastUpdate = timestamp;
+                      }
+                      
+                      if (i < fullResponse.length) {
+                        requestAnimationFrame(animate);
+                      } else {
+                        // Save to database after typing completes
+                        if (userId && thread.id) {
+                          const finalMsg: ChatMessage = {
+                            role: 'assistant',
+                            content: fullResponse,
+                            modelId: m.id,
+                            ts: placeholderTs,
+                          };
+                          addMessageDb({ userId, chatId: thread.id, message: finalMsg }).catch(e => 
+                            console.error('Failed to save openrouter assistant message to DB:', e)
+                          );
+                        }
+                      }
+                    };
+                    requestAnimationFrame(animate);
+                  }
+                  
                   if (!gotAny) {
                     try {
                       const res = await callOpenRouter({
@@ -630,17 +773,34 @@ export function createChatActions({
                         signal: controller.signal,
                       });
                       const text = extractText(res);
-                      setThreads((prev) =>
-                        prev.map((t) => {
-                          if (t.id !== thread.id) return t;
-                          const msgs = (t.messages ?? []).map((msg) =>
-                            msg.ts === placeholderTs && msg.modelId === m.id
-                              ? { ...msg, content: String(text).trim() }
-                              : msg,
-                          );
-                          return { ...t, messages: msgs };
-                        }),
-                      );
+                      if (text && text.trim()) {
+                        const assistantMsg: ChatMessage = {
+                          role: 'assistant',
+                          content: String(text).trim(),
+                          modelId: m.id,
+                          ts: Date.now(),
+                        };
+                        setThreads((prev) =>
+                          prev.map((t) =>
+                            t.id === thread.id
+                              ? { ...t, messages: [...(t.messages ?? nextHistory), assistantMsg] }
+                              : t,
+                          ),
+                        );
+                        
+                        // Save to database
+                        if (userId && thread.id) {
+                          try {
+                            await addMessageDb({
+                              userId,
+                              chatId: thread.id,
+                              message: assistantMsg,
+                            });
+                          } catch (e) {
+                            console.error('Failed to save assistant message to DB:', e);
+                          }
+                        }
+                      }
                     } catch {}
                   }
                 },
@@ -649,7 +809,8 @@ export function createChatActions({
           }
         } finally {
           delete abortControllers[m.id];
-          setLoadingIds((prev) => prev.filter((x) => x !== m.id));
+          // Skip internal loading - using ChatInterface loading animation instead
+          // setLoadingIds((prev) => prev.filter((x) => x !== m.id));
         }
       }),
     );
@@ -702,12 +863,17 @@ export function createChatActions({
 
     const baseHistory = updated.slice(0, userIdx + 1);
 
-    setLoadingIdsInit(selectedModels.map(m => m.id));
+    // Skip internal loading - using ChatInterface loading animation instead
+    // setLoadingIdsInit(selectedModels.map(m => m.id));
     Promise.allSettled(selectedModels.map(async (m) => {
       const controller = new AbortController();
       abortControllers[m.id] = controller;
       const ph = placeholders.find(p => p.model.id === m.id);
-      if (!ph) { setLoadingIds(prev => prev.filter(x => x !== m.id)); return; }
+      if (!ph) { 
+        // Skip internal loading - using ChatInterface loading animation instead
+        // setLoadingIds(prev => prev.filter(x => x !== m.id)); 
+        return; 
+      }
       const placeholderTs = ph.ts;
       try {
         if (m.provider === 'gemini') {
@@ -767,6 +933,19 @@ export function createChatActions({
                     : msg);
                   return { ...tt, messages: msgs };
                 }));
+                
+                // Save final message to database
+                if (userId && t.id) {
+                  const finalMsg: ChatMessage = {
+                    role: 'assistant',
+                    content: full,
+                    modelId: m.id,
+                    ts: placeholderTs,
+                  };
+                  addMessageDb({ userId, chatId: t.id, message: finalMsg }).catch(e => 
+                    console.error('Failed to save assistant message to DB:', e)
+                  );
+                }
               }
             }, 24);
           }
@@ -947,10 +1126,11 @@ export function createChatActions({
             }
           });
         }
-      } finally {
-        delete abortControllers[m.id];
-        setLoadingIds(prev => prev.filter(x => x !== m.id));
-      }
+        } finally {
+          delete abortControllers[m.id];
+          // Skip internal loading - using ChatInterface loading animation instead
+          // setLoadingIds(prev => prev.filter(x => x !== m.id));
+        }
     }));
   }
 

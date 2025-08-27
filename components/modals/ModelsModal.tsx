@@ -1,17 +1,20 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { X, Star, StarOff } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { motion } from 'framer-motion';
+import { X, Star, StarOff, Search, Eye, Brain, MessageSquare, Mic, Image as ImageIcon, Heart } from 'lucide-react';
 import type { AiModel } from '@/lib/types';
 import { MODEL_CATALOG } from '@/lib/models';
 import { useLocalStorage } from '@/lib/useLocalStorage';
 import { mergeModels } from '@/lib/customModels';
+import type { CustomModel } from '@/lib/customModels';
 
 export type ModelsModalProps = {
   open: boolean;
   onClose: () => void;
   selectedIds: string[];
   selectedModels: AiModel[];
-  customModels: AiModel[];
+  customModels: CustomModel[];
   onToggle: (id: string) => void;
 };
 
@@ -23,7 +26,7 @@ export default function ModelsModal({
   customModels,
   onToggle,
 }: ModelsModalProps) {
-  const [activeProvider, setActiveProvider] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [favoriteIds, setFavoriteIds] = useLocalStorage<string[]>('ai-fiesta:favorite-models', [
     'unstable-gpt-5-chat',
     'unstable-claude-sonnet-4',
@@ -46,14 +49,64 @@ export default function ModelsModal({
 
   if (!open) return null;
 
+  const showImageLimitToast = () => {
+    toast.info('Only one image generation model can be active at a time.', {
+      className: 'glass-toast',
+      progressClassName: 'glass-toast-progress',
+      position: 'top-right',
+      autoClose: 3000,
+      closeOnClick: true,
+      pauseOnHover: true,
+    });
+  };
+  const showAudioLimitToast = () => {
+    toast.info('Only one audio model can be active at a time.', {
+      className: 'glass-toast',
+      progressClassName: 'glass-toast-progress',
+      position: 'top-right',
+      autoClose: 3000,
+      closeOnClick: true,
+      pauseOnHover: true,
+    });
+  };
+
+  const handleToggle = (m: AiModel) => {
+    const alreadySelected = selectedIds.includes(m.id);
+    // Enforce only one selected per generation category: image and audio
+    if (!alreadySelected && (m.category === 'image' || m.category === 'audio')) {
+      const hasOtherSameCategory = selectedModels.some(
+        (x) => x.category === m.category && x.id !== m.id,
+      );
+      if (hasOtherSameCategory) {
+        if (m.category === 'image') showImageLimitToast();
+        else showAudioLimitToast();
+        return;
+      }
+    }
+    onToggle(m.id);
+  };
+
+  // Enhanced categorization with thinking models
+  const isThinkingModel = (m: AiModel) => {
+    const id = m.id.toLowerCase();
+    const model = m.model.toLowerCase();
+    const label = m.label.toLowerCase();
+    return model.includes('thinking') || model.includes('o3') || model.includes('o4') || 
+           label.includes('thinking') || id.includes('thinking');
+  };
+
+  const isVisionModel = (m: AiModel) => {
+    const label = m.label.toLowerCase();
+    return label.includes('vision') || label.includes('flash') || label.includes('imagen');
+  };
+
   const buckets: Record<string, AiModel[]> = {
     Favorites: [],
+    'Thinking Models': [],
+    'Vision Models': [],
     'Text Models': [],
-    'Image Models': [],
+    'Image Generation': [],
     'Audio Models': [],
-    Uncensored: [],
-    Free: [],
-    Good: [],
     Others: [],
   };
   const seen = new Set<string>();
@@ -100,12 +153,10 @@ export default function ModelsModal({
   };
 
   // External SVG icons for brand headings (monochrome, reliable)
-  // Using Simple Icons CDN
   const BRAND_ICONS: Record<string, { url: string; alt: string }> = {
-    OpenAI: { url: 'https://cdn.simpleicons.org/openai/ffffff', alt: 'OpenAI' },
-    Google: { url: 'https://cdn.simpleicons.org/google/ffffff', alt: 'Google' },
-    Anthropic: { url: 'https://cdn.simpleicons.org/anthropic/ffffff', alt: 'Anthropic' },
-    // Grok icon not separate in Simple Icons; using xAI brand
+    OpenAI: { url: 'https://cdn.simpleicons.org/openai/ffffff', alt: 'OpenAI / ChatGPT' },
+    Google: { url: 'https://cdn.simpleicons.org/googlegemini/ffffff', alt: 'Google Gemini' },
+    Anthropic: { url: 'https://cdn.simpleicons.org/anthropic/ffffff', alt: 'Anthropic / Claude' },
     Grok: { url: 'https://cdn.simpleicons.org/xai/ffffff', alt: 'xAI Grok' },
   };
 
@@ -116,22 +167,24 @@ export default function ModelsModal({
   };
   const pick = (m: AiModel) => {
     if (isFav(m)) return 'Favorites';
-    if (m.category === 'image') return 'Image Models';
+    if (isThinkingModel(m)) return 'Thinking Models';
+    if (isVisionModel(m)) return 'Vision Models';
+    if (m.category === 'image') return 'Image Generation';
     if (m.category === 'audio') return 'Audio Models';
     if (m.category === 'text' || m.provider === 'open-provider') return 'Text Models';
-    if (isUnc(m)) return 'Uncensored';
-    if (isFree(m)) return 'Free';
-    if (m.good) return 'Good';
     return 'Others';
   };
 
-  // Filter models by provider if a specific provider is selected
-  const filteredModels =
-    activeProvider === 'all'
-      ? MODEL_CATALOG
-      : activeProvider === 'pro'
-        ? MODEL_CATALOG.filter((m) => m.provider === 'unstable' || m.provider === 'mistral')
-        : MODEL_CATALOG.filter((m) => m.provider === activeProvider);
+  // Filter models by search query
+  const filteredModels = MODEL_CATALOG.filter((m) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      m.label.toLowerCase().includes(query) ||
+      m.model.toLowerCase().includes(query) ||
+      m.provider.toLowerCase().includes(query)
+    );
+  });
 
   filteredModels.forEach((m) => {
     const key = pick(m as AiModel);
@@ -140,6 +193,18 @@ export default function ModelsModal({
       seen.add(m.id);
     }
   });
+
+  const getCategoryIcon = (title: string) => {
+    switch (title) {
+      case 'Thinking Models': return <Brain className="h-4 w-4" />;
+      case 'Vision Models': return <Eye className="h-4 w-4" />;
+      case 'Text Models': return <MessageSquare className="h-4 w-4" />;
+      case 'Image Generation': return <ImageIcon className="h-4 w-4" />;
+      case 'Audio Models': return <Mic className="h-4 w-4" />;
+      case 'Favorites': return <Star className="h-4 w-4" />;
+      default: return null;
+    }
+  };
 
   const Section = ({
     title,
@@ -154,133 +219,179 @@ export default function ModelsModal({
     iconUrl?: string;
     iconAlt?: string;
   }) => (
-    <div className="space-y-2">
-      <div className="text-sm md:text-base font-semibold uppercase tracking-wide text-zinc-200 flex items-center gap-2">
-        {iconUrl && (
-          <img
-            src={iconUrl}
-            alt={iconAlt || title}
-            className="h-4 w-4 object-contain opacity-90"
-            data-ignore-errors="true"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = 'none';
-            }}
-          />
-        )}
-        <span>{title}</span>
+    <div className="space-y-4">
+      <div className="text-base font-semibold text-white flex items-center gap-3 pb-3 border-b border-zinc-700/50">
+        <div className="p-2 rounded-lg bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700/50">
+          {iconUrl ? (
+            <img
+              src={iconUrl}
+              alt={iconAlt || title}
+              className="h-5 w-5 object-contain opacity-90"
+              data-ignore-errors="true"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="text-zinc-300">
+              {getCategoryIcon(title)}
+            </div>
+          )}
+        </div>
+        <span className="text-lg">{title}</span>
+        <span className="text-sm text-zinc-400 ml-auto bg-zinc-800/50 px-2 py-1 rounded-full">
+          {models.length}
+        </span>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {models.map((m) => {
           const free = isFree(m);
           const byok = isByok(m);
-          const unc = isUnc(m);
           const selected = selectedIds.includes(m.id);
           const disabled = !selected && selectedModels.length >= 5;
+          const isThinking = isThinkingModel(m);
+          const isVision = isVisionModel(m);
+          
           return (
             <div
               key={m.id}
-              className={`model-chip flex items-center justify-between gap-2 w-full h-10 sm:h-9 md:h-9 px-3 sm:px-3 md:px-3 text-xs sm:text-[11px] md:text-sm rounded-lg ${
-                disabled ? 'opacity-60 cursor-not-allowed text-zinc-500' : ''
+              onClick={() => !disabled && handleToggle(m)}
+              className={`relative group cursor-pointer rounded-2xl border backdrop-blur-sm transition-all duration-300 overflow-hidden ${
+                disabled ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.03] hover:shadow-2xl hover:shadow-red-500/5'
               } ${
                 selected
-                  ? m.good
-                    ? 'model-chip-pro'
-                    : free
-                      ? 'model-chip-free'
-                      : byok
-                        ? 'border-blue-400/30 bg-blue-500/10'
-                        : 'border-white/20 bg-white/10'
-                  : m.good
-                    ? 'model-chip-pro'
-                    : free
-                      ? 'model-chip-free'
-                      : byok
-                        ? 'border-blue-400/20 bg-blue-500/5 hover:bg-blue-500/10'
-                        : 'border-white/10 bg-white/5 hover:bg-white/10'
+                  ? 'border-red-400/50 bg-gradient-to-br from-red-950/40 via-zinc-900/90 to-black/70 shadow-2xl shadow-red-500/20 ring-1 ring-red-500/20'
+                  : 'border-zinc-700/60 bg-gradient-to-br from-zinc-800/50 via-zinc-900/70 to-black/50 hover:border-zinc-600/70 hover:from-zinc-800/70 hover:via-zinc-900/90 hover:to-black/70 hover:ring-1 hover:ring-zinc-500/20'
               }`}
-              data-selected={selected || undefined}
-              data-type={m.good ? 'pro' : free ? 'free' : byok ? 'byok' : unc ? 'unc' : 'other'}
             >
-              {/* Model content - clickable area for selection */}
-              <button
-                onClick={() => !disabled && onToggle(m.id)}
-                className="flex-1 flex items-center gap-1.5 min-w-0 text-left h-full"
-                disabled={disabled}
-                title={
-                  selected ? 'Click to unselect' : disabled ? 'Limit reached' : 'Click to select'
-                }
-              >
-                {showBadges && m.good && (
-                  <span className="badge-base badge-pro inline-flex items-center gap-1 px-1.5 py-0.5">
-                    <Star size={12} className="shrink-0" />
-                    <span className="hidden sm:inline">Pro</span>
-                  </span>
-                )}
-                {showBadges && free && (
-                  <span className="badge-base badge-free inline-flex items-center gap-1 px-1.5 py-0.5">
-                    <span className="h-2 w-2 rounded-full bg-current opacity-80" />
-                    <span className="hidden sm:inline">Free</span>
-                  </span>
-                )}
-                {showBadges && byok && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-200 ring-1 ring-blue-300/30">
-                    <span className="h-2 w-2 rounded-full bg-blue-200" />
-                    <span className="hidden sm:inline">BYOK</span>
-                  </span>
-                )}
-                {showBadges && unc && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-200 ring-1 ring-rose-300/30">
-                    <span className="h-2 w-2 rounded-full bg-rose-200" />
-                    <span className="hidden sm:inline">Uncensored</span>
-                  </span>
-                )}
-                {showBadges && m.category === 'image' && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-200 ring-1 ring-purple-300/30">
-                    <span className="h-2 w-2 rounded-full bg-purple-200" />
-                    <span className="hidden sm:inline">Image</span>
-                  </span>
-                )}
-                {showBadges && m.category === 'audio' && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-200 ring-1 ring-orange-300/30">
-                    <span className="h-2 w-2 rounded-full bg-orange-200" />
-                    <span className="hidden sm:inline">Audio</span>
-                  </span>
-                )}
-                <span className="truncate max-w-full">{m.label}</span>
-              </button>
-
-              {/* Action buttons - separate from selection */}
-              <div className="flex items-center gap-2 shrink-0">
-                {/* Favorite toggle button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFavorite(m.id);
-                  }}
-                  className={`p-1 rounded-md transition-colors ${
-                    isFav(m)
-                      ? 'text-yellow-400 hover:text-yellow-300 bg-yellow-400/10 hover:bg-yellow-400/20'
-                      : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/10'
-                  }`}
-                  title={isFav(m) ? 'Remove from favorites' : 'Add to favorites'}
-                >
-                  {isFav(m) ? <Star size={14} fill="currentColor" /> : <StarOff size={14} />}
-                </button>
-
-                {/* Model selection toggle */}
-                <button
-                  onClick={() => !disabled && onToggle(m.id)}
-                  className="model-toggle-pill"
-                  data-type={m.good ? 'pro' : free ? 'free' : byok ? 'byok' : 'other'}
-                  data-active={selected || undefined}
-                  disabled={disabled}
-                  title={
-                    selected ? 'Click to unselect' : disabled ? 'Limit reached' : 'Click to select'
-                  }
-                >
-                  <span className="model-toggle-thumb" />
-                </button>
+              {/* Enhanced gradient overlays */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/5 to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] via-transparent to-black/10 pointer-events-none" />
+              
+              {/* Selection glow effect */}
+              {selected && (
+                <>
+                  <div className="absolute inset-0 bg-gradient-to-br from-red-500/15 via-red-500/5 to-red-500/10 pointer-events-none" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-red-900/20 via-transparent to-transparent pointer-events-none" />
+                </>
+              )}
+              
+              {/* Model card content */}
+              <div className="relative p-5 flex flex-col h-full min-h-[140px]">
+                {/* Header with badges */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex flex-wrap gap-2">
+                    {m.good && (
+                      <motion.span 
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-500/25 to-amber-500/25 text-yellow-200 text-xs font-bold border border-yellow-500/30 shadow-lg shadow-yellow-500/10"
+                        whileHover={{ scale: 1.05 }}
+                      >
+                        <Star size={12} className="text-yellow-400" fill="currentColor" />
+                        Pro
+                      </motion.span>
+                    )}
+                    {free && (
+                      <motion.span 
+                        className="inline-flex items-center px-3 py-1.5 rounded-full bg-gradient-to-r from-green-500/25 to-emerald-500/25 text-green-200 text-xs font-bold border border-green-500/30 shadow-lg shadow-green-500/10"
+                        whileHover={{ scale: 1.05 }}
+                      >
+                        Free
+                      </motion.span>
+                    )}
+                    {byok && (
+                      <motion.span 
+                        className="inline-flex items-center px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-500/25 to-cyan-500/25 text-blue-200 text-xs font-bold border border-blue-500/30 shadow-lg shadow-blue-500/10"
+                        whileHover={{ scale: 1.05 }}
+                      >
+                        BYOK
+                      </motion.span>
+                    )}
+                    {isThinking && (
+                      <motion.span 
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500/25 to-violet-500/25 text-purple-200 text-xs font-bold border border-purple-500/30 shadow-lg shadow-purple-500/10"
+                        whileHover={{ scale: 1.05 }}
+                      >
+                        <Brain size={12} className="text-purple-400" />
+                        Thinking
+                      </motion.span>
+                    )}
+                    {isVision && (
+                      <motion.span 
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/25 to-teal-500/25 text-cyan-200 text-xs font-bold border border-cyan-500/30 shadow-lg shadow-cyan-500/10"
+                        whileHover={{ scale: 1.05 }}
+                      >
+                        <Eye size={12} className="text-cyan-400" />
+                        Vision
+                      </motion.span>
+                    )}
+                    {isUnc(m) && (
+                      <motion.span 
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-red-500/25 to-rose-500/25 text-red-200 text-xs font-bold border border-red-500/30 shadow-lg shadow-red-500/10"
+                        whileHover={{ scale: 1.05 }}
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full bg-red-400 animate-pulse" />
+                        Uncensored
+                      </motion.span>
+                    )}
+                    {m.category === 'image' && (
+                      <motion.span 
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-pink-500/25 to-rose-500/25 text-pink-200 text-xs font-bold border border-pink-500/30 shadow-lg shadow-pink-500/10"
+                        whileHover={{ scale: 1.05 }}
+                      >
+                        <ImageIcon size={12} className="text-pink-400" />
+                        Image
+                      </motion.span>
+                    )}
+                    {m.category === 'audio' && (
+                      <motion.span 
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-orange-500/25 to-red-500/25 text-orange-200 text-xs font-bold border border-orange-500/30 shadow-lg shadow-orange-500/10"
+                        whileHover={{ scale: 1.05 }}
+                      >
+                        <Mic size={12} className="text-orange-400" />
+                        Audio
+                      </motion.span>
+                    )}
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFavorite(m.id);
+                    }}
+                    className={`p-2 rounded-lg transition-all duration-200 ${
+                      isFav(m)
+                        ? 'text-yellow-400 hover:text-yellow-300 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20'
+                        : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/10 border border-transparent hover:border-white/10'
+                    }`}
+                  >
+                    {isFav(m) ? <Star size={16} fill="currentColor" /> : <StarOff size={16} />}
+                  </button>
+                </div>
+                
+                {/* Model name */}
+                <h4 className="font-semibold text-white text-base mb-2 line-clamp-2 leading-tight">
+                  {m.label}
+                </h4>
+                
+                {/* Provider */}
+                <p className="text-sm text-zinc-400 mb-4 capitalize font-medium">
+                  {m.provider.replace('-', ' ')}
+                </p>
+                
+                {/* Enhanced selection indicator */}
+                <div className="mt-auto">
+                  <div className={`w-full h-1.5 rounded-full transition-all duration-300 ${
+                    selected 
+                      ? 'bg-gradient-to-r from-red-600 via-red-400 to-red-600 shadow-lg shadow-red-500/40' 
+                      : 'bg-gradient-to-r from-zinc-700/80 via-zinc-600/60 to-zinc-700/80'
+                  }`} />
+                  {selected && (
+                    <div className="text-xs text-red-300 font-semibold mt-2 text-center tracking-wide">
+                      ✓ SELECTED
+                    </div>
+                  )}
+                </div>
               </div>
+
             </div>
           );
         })}
@@ -290,12 +401,11 @@ export default function ModelsModal({
 
   const order: Array<keyof typeof buckets> = [
     'Favorites',
+    'Thinking Models',
+    'Vision Models', 
     'Text Models',
-    'Image Models',
+    'Image Generation',
     'Audio Models',
-    'Uncensored',
-    'Free',
-    'Good',
     'Others',
   ];
   // Build sections; for Text Models, group into branded subsections
@@ -324,8 +434,8 @@ export default function ModelsModal({
             key={`Text-${name}`}
             title={name}
             models={grouped[name]}
-            iconUrl={BRAND_ICONS[name]?.url}
-            iconAlt={BRAND_ICONS[name]?.alt}
+            iconUrl={BRAND_ICONS[name]?.url ?? '/brand.png'}
+            iconAlt={BRAND_ICONS[name]?.alt ?? 'Open Fiesta'}
           />
         ));
     });
@@ -357,34 +467,22 @@ export default function ModelsModal({
             <X size={16} />
           </button>
         </div>
-        <div className="text-xs md:text-sm text-zinc-300 mb-4">
-          Selected: {selectedModels.length}/5
-        </div>
-
-        {/* Provider Filter Tabs */}
-        <div className="flex flex-wrap gap-2 mb-4 pb-3 border-b border-white/10">
-          {[
-            { id: 'all', label: 'All Models', count: allModels.length },
-            { id: 'pro', label: 'Pro Models', count: allModels.filter(m => m.provider === 'unstable' || m.provider === 'mistral').length },
-            { id: 'gemini', label: 'Gemini', count: allModels.filter(m => m.provider === 'gemini').length },
-            { id: 'openrouter', label: 'OpenRouter', count: allModels.filter(m => m.provider === 'openrouter').length },
-            { id: 'open-provider', label: 'Open Provider', count: allModels.filter(m => m.provider === 'open-provider').length },
-            { id: 'unstable', label: 'Unstable', count: allModels.filter(m => m.provider === 'unstable').length },
-            { id: 'mistral', label: 'Mistral', count: allModels.filter(m => m.provider === 'mistral').length },
-            { id: 'ollama', label: 'Ollama', count: allModels.filter(m => m.provider === 'ollama').length },
-          ].map(provider => (
-            <button
-              key={provider.id}
-              onClick={() => setActiveProvider(provider.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                activeProvider === provider.id
-                  ? 'bg-white/20 text-white border border-white/30'
-                  : 'bg-white/5 text-zinc-300 hover:bg-white/10 border border-white/10'
-              }`}
-            >
-              {provider.label} {provider.count}
-            </button>
-          ))}
+        <div className="flex items-center justify-between mb-6">
+          <div className="text-sm text-zinc-300">
+            Selected: <span className="text-white font-medium">{selectedModels.length}/5</span>
+          </div>
+          
+          {/* Search bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
+            <input
+              type="text"
+              placeholder="Search models..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-zinc-400 focus:outline-none focus:border-white/30 focus:bg-white/10 w-64"
+            />
+          </div>
         </div>
 
         <div className="space-y-4 flex-1 overflow-y-auto pr-1 scroll-touch safe-inset">
