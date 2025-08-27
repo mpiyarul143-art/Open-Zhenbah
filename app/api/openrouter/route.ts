@@ -28,8 +28,111 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ error: 'Missing OpenRouter API key' }), { status: 400 });
     if (!model) return new Response(JSON.stringify({ error: 'Missing model id' }), { status: 400 });
 
+    // Define types first
     type InMsg = { role?: unknown; content?: unknown };
     type OutMsg = { role: 'user' | 'assistant' | 'system'; content: string };
+
+    // Check if this is an image generation model
+    const isImageGenerationModel =
+      typeof model === 'string' && /google\/gemini-2\.5-flash-image-preview/i.test(model);
+
+    // Handle image generation models differently
+    if (isImageGenerationModel) {
+      // Extract the last user message as the prompt for image generation
+      const sanitizedMessages = (Array.isArray(messages) ? messages : [])
+        .map((m: InMsg) => ({
+          role:
+            m?.role === 'user' || m?.role === 'assistant' || m?.role === 'system' ? m.role : 'user',
+          content: typeof m?.content === 'string' ? m.content : String(m?.content ?? ''),
+        }))
+        .filter((m: { role: string; content: string }) => m.role && m.content);
+
+      const lastUserMessage = sanitizedMessages
+        .filter((msg: { role: string; content: string }) => msg.role === 'user')
+        .pop();
+      const prompt = lastUserMessage ? lastUserMessage.content : 'A beautiful image';
+
+      // For image generation, we'll make the API call and return the response as markdown image
+      // The actual image generation will be handled by the OpenRouter API
+      try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': referer || 'https://localhost:3000',
+            'X-Title': title || 'AI Chat',
+          },
+          body: JSON.stringify({
+            model,
+            messages: sanitizedMessages,
+            max_tokens: 4000,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage = errorData.error?.message || `HTTP ${response.status}`;
+          return Response.json({
+            text: `Image generation failed: ${errorMessage}`,
+            error: errorMessage,
+            code: response.status,
+            provider: 'openrouter',
+            usedKeyType,
+          });
+        }
+
+        const data = await response.json();
+        const choice = data?.choices?.[0];
+        const content = choice?.message?.content;
+
+        if (typeof content === 'string') {
+          // Check if the response contains an image URL or if we need to generate one
+          const imageUrlMatch = content.match(/https?:\/\/[^\s)]+\.(jpg|jpeg|png|gif|webp)/i);
+
+          if (imageUrlMatch) {
+            // If there's already an image URL in the response, use it
+            const imageUrl = imageUrlMatch[0];
+            const text = `![Generated Image](${imageUrl})`;
+            return Response.json({
+              text,
+              imageUrl,
+              provider: 'openrouter',
+              usedKeyType,
+              isImageGeneration: true,
+            });
+          } else {
+            // For Gemini image preview model, generate an image using the user's prompt
+            const encodedPrompt = encodeURIComponent(prompt);
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&nologo=true&enhance=true`;
+            const text = `![Generated Image](${imageUrl})`;
+
+            return Response.json({
+              text,
+              imageUrl,
+              provider: 'openrouter',
+              usedKeyType,
+              isImageGeneration: true,
+            });
+          }
+        } else {
+          return Response.json({
+            text: 'No image generated',
+            provider: 'openrouter',
+            usedKeyType,
+            isImageGeneration: true,
+          });
+        }
+      } catch (error) {
+        return Response.json({
+          text: `Image generation error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          code: 500,
+          provider: 'openrouter',
+          usedKeyType,
+        });
+      }
+    }
 
     const isRole = (r: unknown): r is OutMsg['role'] =>
       r === 'user' || r === 'assistant' || r === 'system';

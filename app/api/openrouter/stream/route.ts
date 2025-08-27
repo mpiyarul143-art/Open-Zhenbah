@@ -25,6 +25,58 @@ export async function POST(req: NextRequest) {
     if (!apiKey) return new Response('Missing OpenRouter API key', { status: 400 });
     if (!model) return new Response('Missing model id', { status: 400 });
 
+    // Check if this is an image generation model - redirect to non-streaming endpoint
+    const isImageGenerationModel = typeof model === 'string' && 
+      /google\/gemini-2\.5-flash-image-preview/i.test(model);
+
+    if (isImageGenerationModel) {
+      // For image generation models, redirect to the non-streaming endpoint
+      const response = await fetch(new URL('/api/openrouter', req.url).toString(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages,
+          model,
+          apiKey: apiKeyFromBody,
+          referer,
+          title,
+          imageDataUrl,
+        }),
+      });
+
+      const data = await response.json();
+      
+      // Return as SSE stream for consistency with streaming interface
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        start(controller) {
+          // Send the complete response as a single chunk
+          if (data.text) {
+            controller.enqueue(encoder.encode(sseEncode({ token: data.text })));
+          }
+          // Send metadata
+          controller.enqueue(encoder.encode(sseEncode({ 
+            meta: { 
+              provider: data.provider, 
+              usedKeyType: data.usedKeyType,
+              isImageGeneration: data.isImageGeneration 
+            } 
+          })));
+          controller.close();
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    }
+
     type InMsg = { role?: unknown; content?: unknown };
     type OutMsg = { role: 'user' | 'assistant' | 'system'; content: string };
     const isRole = (r: unknown): r is OutMsg['role'] =>

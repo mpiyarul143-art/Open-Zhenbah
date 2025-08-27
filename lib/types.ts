@@ -48,4 +48,6 @@ export type ChatThread = {
   createdAt: number;
   // When set, this chat belongs to a specific project. If undefined, it's a general chat.
   projectId?: string;
+  // Track which page type this thread was created on
+  pageType?: 'home' | 'compare';
 };

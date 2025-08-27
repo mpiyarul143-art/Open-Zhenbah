@@ -1,6 +1,37 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+/* Custom toast styles */
+.Toastify__toast {
+  background: rgba(24, 24, 27, 0.95) !important;
+  border: 1px solid rgba(113, 113, 122, 0.5) !important;
+  color: rgb(244, 244, 245) !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  backdrop-filter: blur(4px) !important;
+  border-radius: 0.5rem !important;
+}
+
+.Toastify__toast--success {
+  border-left: 4px solid rgb(16, 185, 129) !important;
+}
+
+.Toastify__toast--error {
+  border-left: 4px solid rgb(239, 68, 68) !important;
+}
+
+.Toastify__progress-bar {
+  background: rgb(16, 185, 129) !important;
+}
+
+.Toastify__close-button {
+  color: rgb(161, 161, 170) !important;
+  opacity: 1 !important;
+}
+
+.Toastify__close-button:hover {
+  color: rgb(228, 228, 231) !important;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -1106,8 +1137,11 @@ body.light * {
   animation: img-sweep 2.2s ease-in-out infinite;
 }
 .img-breathe {
-  animation: img-breathe 3.2s ease-in-out infinite;
+  animation: img-breathe 3s ease-in-out infinite;
 }
+
+/* Import MessageDisplay styles */
+@import '../components/chat/MessageDisplay.module.css';
 .img-ripple {
   animation: img-ripple 2.6s ease-in-out infinite;
 }
@@ -1192,4 +1226,85 @@ body.light * {
 }
 .img-ripple {
   animation: img-ripple 2.6s ease-in-out infinite;
+}
+
+/* Additional CSS variables and styles for OpenFiestaChat page.tsx */
+:root {
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    /* Firefox scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Webkit scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.3);
+    border-radius: 4px;
+    transition: background 0.2s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(156, 163, 175, 0.5);
+  }
+
+  /* Dark mode scrollbar */
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(239, 68, 68, 0.3);
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(239, 68, 68, 0.5);
+  }
+
+  /* Light mode scrollbar */
+  :root:not(.dark) ::-webkit-scrollbar-thumb {
+    background: rgba(251, 146, 60, 0.3);
+  }
+
+  :root:not(.dark) ::-webkit-scrollbar-thumb:hover {
+    background: rgba(251, 146, 60, 0.5);
+  }
+
+  .dark * {
+    scrollbar-color: rgba(239, 68, 68, 0.3) transparent;
+  }
+
+  :root:not(.dark) * {
+    scrollbar-color: rgba(251, 146, 60, 0.3) transparent;
+  }
 }

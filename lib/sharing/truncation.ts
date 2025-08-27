@@ -2,7 +2,7 @@ import type { ChatMessage } from '@/lib/types';
 import type { TruncationConfig, TruncationResult } from './types';
 
 export const DEFAULT_TRUNCATION_CONFIG: TruncationConfig = {
-  maxMessages: 20,
+  maxMessages: 100, // Increased to show full conversations
   preserveOrder: true,
   includeMetadata: true,
 };

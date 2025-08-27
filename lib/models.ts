@@ -165,6 +165,15 @@ export const MODEL_CATALOG: AiModel[] = [
     provider: 'openrouter',
     model: 'x-ai/grok-3-mini',
   },
+  {
+    id: 'gemini-2.5-flash-image-preview',
+    label: 'Gemini 2.5 Flash Image Preview (free)',
+    provider: 'openrouter',
+    model: 'google/gemini-2.5-flash-image-preview:free',
+    good: true,
+    category: 'image',
+    // OpenRouter models require API key (BYOK)
+  },
 
   // Open Provider Text Models - Official Models
   {

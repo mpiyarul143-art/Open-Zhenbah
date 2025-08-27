@@ -143,37 +143,84 @@ export default function ChatGrid({
 
             {pairs.map((row, i) => (
               <div key={i} className="space-y-3">
-                {/* Prompt callout */}
-                <div className="relative flex items-start justify-between gap-3 px-3 py-2 rounded-lg ring-1 ring-black/10 dark:ring-white/10 chat-prompt-accent">
-                  <div className="chat-prompt-side" />
-                  <div className="flex items-start gap-2 min-w-0 flex-1">
-                    <span className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11px] font-semibold text-black dark:text-white bg-black/60 dark:bg-black/60 ring-1 ring-black/15 dark:ring-white/15 border border-black/15 dark:border-white/15 backdrop-blur-sm shadow-[0_2px_10px_rgba(0,0,0,0.45)] shrink-0">
-                      <span className="h-2 w-2 rounded-full bg-black/90 dark:bg-white/90 shadow-[0_0_6px_rgba(0,0,0,0.6)] dark:shadow-[0_0_6px_rgba(255,255,255,0.6)]" />
-                      You
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm leading-relaxed text-black dark:text-white">
-                        {row.user.content}
-                      </div>
+                {/* User prompt as right-aligned red pill */}
+                <div className="px-2 flex justify-end">
+                  <div className="max-w-[68ch]">
+                    <div className="relative">
+                      {editingIdx === i ? (
+                        <div className="ml-auto">
+                          <textarea
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            className="w-full min-h-[40px] max-w-[68ch] text-sm leading-relaxed px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/60 resize-none focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                            placeholder="Edit your message..."
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                if (draft.trim()) {
+                                  onEditUser(i, draft.trim());
+                                  setEditingIdx(null);
+                                  setDraft('');
+                                }
+                              } else if (e.key === 'Escape') {
+                                setEditingIdx(null);
+                                setDraft('');
+                              }
+                            }}
+                          />
+                          <div className="mt-2 flex justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                if (draft.trim()) {
+                                  onEditUser(i, draft.trim());
+                                  setEditingIdx(null);
+                                  setDraft('');
+                                }
+                              }}
+                              className="px-3 py-1 text-xs rounded bg-rose-600 hover:bg-rose-700 text-white transition-colors"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingIdx(null);
+                                setDraft('');
+                              }}
+                              className="px-3 py-1 text-xs rounded bg-white/10 hover:bg-white/20 text-white transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="ml-auto inline-flex items-center text-sm leading-relaxed px-3 py-1.5 rounded-full bg-rose-600 text-white shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
+                            <span className="truncate whitespace-pre-wrap break-words max-w-[68ch]">{row.user.content}</span>
+                          </div>
+                          <div className="mt-2 flex justify-end gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => {
+                                setEditingIdx(i);
+                                setDraft(row.user.content);
+                              }}
+                              className="icon-btn h-7 w-7 accent-focus"
+                              title="Edit message"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => onDeleteUser(i)}
+                              className="icon-btn h-7 w-7 accent-focus"
+                              title="Delete message"
+                            >
+                              <Trash size={14} />
+                            </button>
+                            <CopyToClipboard getText={() => row.user.content} />
+                          </div>
+                        </>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => onEditUser(i, row.user.content)}
-                      className="icon-btn h-7 w-7 accent-focus"
-                      title="Edit message"
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      onClick={() => onDeleteUser(i)}
-                      className="icon-btn h-7 w-7 accent-focus"
-                      title="Delete message"
-                    >
-                      <Trash size={14} />
-                    </button>
-
-                    <CopyToClipboard getText={() => row.user.content} />
                   </div>
                 </div>
 
@@ -226,21 +273,24 @@ export default function ChatGrid({
                               />
                             </div>
                           )}
-                          <div
-                            className={`text-sm leading-relaxed w-full pr-8 ${
-                              isCollapsed ? 'overflow-hidden max-h-20 opacity-70' : 'space-y-2'
-                            } ${
-                              !isCollapsed
-                                ? 'max-h-[40vh] md:max-h-[400px] overflow-y-auto custom-scrollbar'
-                                : ''
-                            }`}
-                            style={{ WebkitOverflowScrolling: 'touch' }}
-                          >
+                          <div className="relative pl-7">
+                            {/* small orb indicator */}
+                            <span className="absolute left-0 top-1.5 h-3.5 w-3.5 rounded-full bg-white/70 shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
+                            <div
+                              className={`text-sm leading-relaxed w-full pr-8 ${
+                                isCollapsed ? 'overflow-hidden max-h-20 opacity-70' : 'space-y-2'
+                              } ${
+                                !isCollapsed
+                                  ? 'max-h-[40vh] md:max-h-[400px] overflow-y-auto custom-scrollbar'
+                                  : ''
+                              }`}
+                              style={{ WebkitOverflowScrolling: 'touch' }}
+                            >
                             {ans &&
                             String(ans.content || '').length > 0 &&
                             !['Thinking…', 'Typing…'].includes(String(ans.content)) ? (
                               <>
-                                <div className="max-w-[72ch]">
+                                <div className="max-w-[72ch] rounded-2xl bg-white/10 ring-1 ring-white/10 px-3 py-2">
                                   <MarkdownLite text={sanitizeContent(ans.content)} />
                                 </div>
                                 {/* Token usage footer */}
@@ -331,6 +381,7 @@ export default function ChatGrid({
                             ) : (
                               <span className="text-zinc-400 text-sm">No response</span>
                             )}
+                            </div>
                           </div>
                           {isCollapsed && (
                             <div className="absolute inset-0 flex items-center justify-center">

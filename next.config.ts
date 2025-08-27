@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: process.env.NODE_ENV === 'production',
   },
+  // Enable styled-components transform
+  compiler: {
+    styledComponents: true,
+  },
   
   // Production optimizations
   compress: true,
