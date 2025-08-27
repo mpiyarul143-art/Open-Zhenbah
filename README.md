@@ -211,6 +211,42 @@ Notes:
 - **Changed schema?**
   - Update `lib/data.ts` mappings: `mapChatRowToThread()` and `mapMessageRowToChatMessage()`.
 
+## Bypass sign-in (dev only)
+
+Enable a safe, local-only bypass to develop without authenticating.
+
+### How to enable
+
+1. Copy example env file and edit locally:
+   ```bash
+   cp env.example .env.local
+   ```
+2. In `.env.local` set:
+   ```bash
+   NEXT_PUBLIC_BYPASS_AUTH=1
+   ```
+3. Start the dev server:
+   ```bash
+   npm run dev
+   ```
+4. The app will treat you as a signed-in mock user. UI gates won’t block.
+
+### How it works
+
+- `lib/auth.tsx` checks both:
+  - `process.env.NEXT_PUBLIC_BYPASS_AUTH === '1'`
+  - `process.env.NODE_ENV !== 'production'`
+- When true, it:
+  - Sets a mock `User` (`id: 00000000-0000-0000-0000-000000000001`)
+  - Skips Supabase auth listeners
+  - Makes `signInWithProvider()` a no-op in dev
+
+### Safety
+
+- Bypass is hard-disabled in production by the `NODE_ENV` check.
+- Do not set `NEXT_PUBLIC_BYPASS_AUTH` on Vercel.
+- Example variables are in `env.example`; copy it locally instead of committing secrets.
+
 ## Ollama Support
 
 Open-Fiesta supports local Ollama models. To use Ollama:
