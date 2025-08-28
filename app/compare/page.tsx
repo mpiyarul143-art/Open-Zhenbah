@@ -24,8 +24,9 @@ import GithubStar from '@/components/app/GithubStar';
 import ThemeToggle from '@/components/ThemeToggle';
 import CustomModels from '@/components/modals/CustomModels';
 import Settings from '@/components/app/Settings';
-import { Layers } from 'lucide-react';
+import { Layers, Home as HomeIcon } from 'lucide-react';
 import SupportDropdown from '@/components/support-dropdown';
+import Link from 'next/link';
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -373,6 +374,15 @@ export default function Home() {
 
                 {mobileActionsOpen && (
                   <div className="absolute right-0 top-11 z-50 rounded-xl border border-white/15 bg-black/60 backdrop-blur-md shadow-xl p-2 flex items-center gap-2">
+                    <Link
+                      href="/"
+                      className="inline-flex items-center justify-center h-9 w-9 rounded-xl
+              bg-gradient-to-r from-white/12 to-white/8 border border-white/15 text-white hover:from-white/18 hover:to-white/12 hover:border-white/25 backdrop-blur-sm shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
+                      aria-label="Go to home"
+                      title="Home"
+                    >
+                      <HomeIcon size={18} />
+                    </Link>
                     <button
                       onClick={() => { setModelsModalOpen(true); setMobileActionsOpen(false); }}
                       className="inline-flex items-center gap-1.5 text-xs h-9 w-9 justify-center rounded-md border border-white/15 bg-white/5 hover:bg-white/10 shadow"
