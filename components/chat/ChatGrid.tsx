@@ -131,7 +131,7 @@ export default function ChatGrid({
 
                       <button
                         key={m.id}
-                        onClick={() => onToggle(m.id)} 
+                        onClick={() => onToggle(m.id)}
                         className={`icon-btn text-black dark:text-white cursor-pointer ${
                           m.good
                             ? 'model-chip-pro'
@@ -229,8 +229,10 @@ export default function ChatGrid({
                         </div>
                       ) : (
                         <>
-                          <div className="ml-auto inline-flex items-center text-sm leading-relaxed px-3 py-1.5 rounded-full bg-rose-600 text-white shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
-                            <span className="truncate whitespace-pre-wrap break-words max-w-[68ch]">{row.user.content}</span>
+                          <div className="ml-auto inline-flex items-center text-sm leading-relaxed px-3 py-1.5 rounded-2xl bg-[var(--accent-interactive-primary)] text-white shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
+                            <span className="truncate whitespace-pre-wrap break-words max-w-[68ch]">
+                              {row.user.content}
+                            </span>
                           </div>
                           <div className="mt-2 flex justify-end gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
                             <button
