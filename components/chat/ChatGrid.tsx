@@ -1,7 +1,17 @@
 'use client';
 import ConfirmDialog from '@/components/modals/ConfirmDialog';
 import type { AiModel, ChatMessage } from '@/lib/types';
-import { ChevronDown, ChevronUp, Eye, Loader2, Pencil, Star, Trash, Expand, Shrink } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  Loader2,
+  Pencil,
+  Star,
+  Trash,
+  Expand,
+  Shrink,
+  Minus,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import MarkdownLite from './MarkdownLite';
 import { CopyToClipboard } from '../ui/CopyToClipboard';
@@ -18,6 +28,7 @@ export type ChatGridProps = {
   onEditUser: (turnIndex: number, newText: string) => void;
   onDeleteUser: (turnIndex: number) => void;
   onDeleteAnswer: (turnIndex: number, modelId: string) => void;
+  onToggle: (id: string) => void;
 };
 
 export default function ChatGrid({
@@ -30,6 +41,7 @@ export default function ChatGrid({
   onEditUser,
   onDeleteUser,
   onDeleteAnswer,
+  onToggle,
 }: ChatGridProps) {
   const [pendingDelete, setPendingDelete] = useState<
     | { type: 'turn'; turnIndex: number }
@@ -76,7 +88,7 @@ export default function ChatGrid({
                 return (
                   <div
                     key={m.id}
-                    className={`px-2.5 py-2 sm:px-2 sm:py-2 min-h-[42px] flex items-center ${
+                    className={`px-2.5 py-2 sm:px-2 sm:py-2 min-h-[42px] min-w-fit flex items-center ${
                       isCollapsed ? 'justify-center' : 'justify-between'
                     } overflow-visible rounded-lg backdrop-blur-sm shadow-[0_1px_8px_rgba(0,0,0,0.25)] ring-1 ${
                       m.good
@@ -116,6 +128,28 @@ export default function ChatGrid({
                       </div>
                     )}
                     <div className="flex items-center gap-2">
+
+                      <button
+                        key={m.id}
+                        onClick={() => onToggle(m.id)} 
+                        className={`icon-btn text-black dark:text-white cursor-pointer ${
+                          m.good
+                            ? 'model-chip-pro'
+                            : isFree
+                              ? 'model-chip-free'
+                              : 'border-black/10 dark:border-white/10'
+                        }`}
+                        data-selected={true}
+                        data-type={m.good ? 'pro' : isFree ? 'free' : 'other'}
+                        title="Click to toggle"
+                      >
+                        <Minus
+                          size={16}
+                          data-type={m.good ? 'pro' : 'free'}
+                          data-active={true}
+                        />
+                      </button>
+
                       {isCollapsed ? (
                         <button
                           onClick={() =>
@@ -124,7 +158,7 @@ export default function ChatGrid({
                           className="icon-btn h-7 w-7 accent-focus"
                           title={`Expand ${m.label}`}
                         >
-                          <ChevronDown size={14} />
+                          <EyeOff size={14} />
                         </button>
                       ) : (
                         <button
@@ -132,7 +166,7 @@ export default function ChatGrid({
                           className="icon-btn h-7 w-7 accent-focus"
                           title={`Collapse ${m.label}`}
                         >
-                          <ChevronUp size={14} />
+                          <Eye size={14} />
                         </button>
                       )}
                     </div>
