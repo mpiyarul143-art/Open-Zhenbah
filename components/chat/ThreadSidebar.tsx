@@ -466,21 +466,43 @@ export default function ThreadSidebar({
       {mobileSidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/60" onClick={onCloseMobile} />
-          <div className="absolute left-0 top-0 h-full w-72 bg-zinc-900/90 border-r border-white/10 p-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full accent-dot accent-beacon accent-dot-pulse" />
-                <h2 className="text-sm font-semibold">Open Fiesta</h2>
+          <div className="absolute left-0 top-0 h-full w-80 max-w-[85vw] rounded-r-xl border border-white/10 p-4 backdrop-blur-xl bg-gradient-to-b from-black/40 via-black/30 to-black/20 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="w-4 h-4 rounded-full bg-gradient-to-r from-red-500 to-red-600 shadow-lg" />
+                  <div className="absolute inset-0 w-4 h-4 rounded-full bg-gradient-to-r from-red-500 to-red-600 animate-ping opacity-30" />
+                </div>
+                <h2 className="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">Open Fiesta</h2>
               </div>
               <button
                 aria-label="Close"
                 onClick={onCloseMobile}
-                className="h-8 w-8 inline-flex items-center justify-center rounded-md
-                  bg-gray-200 hover:bg-gray-300 text-gray-800
-                  dark:bg-white/10 dark:hover:bg-white/20 dark:text-white"
+                className="h-7 w-7 rounded-full bg-gradient-to-r from-white/15 to-white/10 border border-white/20 backdrop-blur-sm flex items-center justify-center hover:from-white/25 hover:to-white/15 hover:border-white/30 transition-all duration-200 shadow-lg"
               >
-                <X size={16} />
+                <X size={14} className="text-white/90" />
               </button>
+            </div>
+
+            {/* Credits link under title */}
+            <div className="mb-4">
+              <a
+                href="https://x.com/byteHumi"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-3 rounded-xl px-3 py-2 bg-gradient-to-r from-white/8 to-white/4 border border-white/15 shadow-sm hover:border-white/25 hover:from-white/12 hover:to-white/6 hover:shadow-md transition-all duration-200 backdrop-blur-sm"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/image.png"
+                  alt="Niladri"
+                  className="h-7 w-7 rounded-full ring-2 ring-white/20 object-cover shadow-sm"
+                />
+                <span className="text-sm text-white/90">
+                  <span className="font-medium">Made by</span>
+                  <span className="font-bold ml-1">Niladri</span>
+                </span>
+              </a>
             </div>
 
             <div className="mb-4">
@@ -500,20 +522,20 @@ export default function ThreadSidebar({
             </div>
 
             {/* Search Bar (Mobile) */}
-            <div className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
+            <div className="mb-6">
+              <div className="relative group">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/50 group-focus-within:text-white/70 transition-colors" />
                 <input
                   type="text"
                   placeholder="Search threads..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-zinc-800/50 border border-zinc-700/50 rounded-lg text-sm text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-0 focus:border-zinc-500 transition-all duration-200"
+                  className="w-full pl-12 pr-10 py-3 bg-white/8 border border-white/15 rounded-xl text-sm text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30 focus:bg-white/12 transition-all duration-200 backdrop-blur-sm"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white/80 transition-colors p-1 rounded-md hover:bg-white/10"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -521,17 +543,20 @@ export default function ThreadSidebar({
               </div>
             </div>
 
-            <button
-              onClick={() => {
-                handleNewChat();
-                onCloseMobile();
-              }}
-               style={{ backgroundColor: accent.primary,}}
-              className="mb-3 text-sm px-3 py-2 w-full rounded-md shadow dark:bg-white/10 dark:hover:bg-white/20 transition-all duration-200 hover:scale-[1.02]"
-            >
-              + New Chat
-            </button>
-            
+            <div className="mb-6">
+              <button
+                onClick={() => {
+                  handleNewChat();
+                  onCloseMobile();
+                }}
+                className="w-full text-sm font-semibold px-4 py-3 rounded-xl shadow-lg text-white bg-gradient-to-r hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] border border-white/20"
+                style={{ backgroundImage: `linear-gradient(135deg, ${accent.primary}, ${accent.primary}dd)` }}
+              >
+                <Plus className="inline-block w-4 h-4 mr-2" />
+                New Chat
+              </button>
+            </div>
+
             <div className="h-[65vh] overflow-y-auto space-y-2 pr-1">
               {threads.length === 0 ? (
                 <div className="text-xs opacity-60">No chats yet</div>
@@ -542,7 +567,7 @@ export default function ThreadSidebar({
                   {/* Today */}
                   {groupedThreads.today.length > 0 && (
                     <div className="mb-3">
-                      <div className="text-xs uppercase tracking-wide opacity-60 mb-2 px-1">Today</div>
+                      <div className="text-xs font-semibold uppercase tracking-wider text-white/60 mb-3 px-2">Today</div>
                       <div className="space-y-2">
                         {groupedThreads.today.map((t) => (
                           <ThreadItem
@@ -574,7 +599,7 @@ export default function ThreadSidebar({
                   {/* Yesterday */}
                   {groupedThreads.yesterday.length > 0 && (
                     <div className="mb-3">
-                      <div className="text-xs uppercase tracking-wide opacity-60 mb-2 px-1">Yesterday</div>
+                      <div className="text-xs font-semibold uppercase tracking-wider text-white/60 mb-3 px-2">Yesterday</div>
                       <div className="space-y-2">
                         {groupedThreads.yesterday.map((t) => (
                           <ThreadItem
@@ -606,7 +631,7 @@ export default function ThreadSidebar({
                   {/* Older */}
                   {groupedThreads.older.length > 0 && (
                     <div className="mb-3">
-                      <div className="text-xs uppercase tracking-wide opacity-60 mb-2 px-1">Older</div>
+                      <div className="text-xs font-semibold uppercase tracking-wider text-white/60 mb-3 px-2">Older</div>
                       <div className="space-y-2">
                         {groupedThreads.older.map((t) => (
                           <ThreadItem

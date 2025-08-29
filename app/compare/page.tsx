@@ -101,7 +101,7 @@ export default function Home() {
   const headerTemplate = useMemo(() => {
     if (selectedModels.length === 0) return '';
     const parts = selectedModels.map((m) =>
-      collapsedIds.includes(m.id) ? '90px' : 'minmax(280px, 1fr)',
+      collapsedIds.includes(m.id) ? '90px' : '320px',
     );
     return parts.join(' ');
   }, [selectedModels, collapsedIds]);
@@ -358,6 +358,10 @@ export default function Home() {
               </button>
               {/* Right: Actions trigger (mobile) */}
               <div className="relative flex items-center gap-2">
+                {/* Inline Support button on mobile header */}
+                <div className="sm:hidden">
+                  <SupportDropdown inline theme={theme.mode === 'dark' ? 'dark' : 'light'} />
+                </div>
                 <button
                   onClick={() => setMobileActionsOpen((v) => !v)}
                   className="inline-flex items-center justify-center h-9 w-9 rounded-md border border-white/15 bg-white/5 hover:bg-white/10 shadow"
@@ -447,7 +451,6 @@ export default function Home() {
                 pairs={pairsWithPlaceholders}
                 onEditUser={onEditUser}
                 onDeleteUser={onDeleteUser}
-                onDeleteAnswer={onDeleteAnswer}
                 onToggle={toggle}
               />
             )}
@@ -470,8 +473,10 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Support dropdown floating action at bottom-right */}
-      <SupportDropdown theme={theme.mode === 'dark' ? 'dark' : 'light'} />
+      {/* Support dropdown floating action at bottom-right (hidden on mobile) */}
+      <div className="hidden sm:block">
+        <SupportDropdown theme={theme.mode === 'dark' ? 'dark' : 'light'} />
+      </div>
 
       {/* Compare-only visual overrides */}
       <style jsx global>{`

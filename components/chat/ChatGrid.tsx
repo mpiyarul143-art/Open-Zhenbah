@@ -43,7 +43,7 @@ export default function ChatGrid({
 }: ChatGridProps) {
   const [pendingDelete, setPendingDelete] = useState<{ turnIndex: number } | null>(null);
   const headerCols = useMemo(
-    () => headerTemplate || `repeat(${selectedModels.length}, minmax(260px, 1fr))`,
+    () => headerTemplate || `repeat(${selectedModels.length}, 320px)`,
     [headerTemplate, selectedModels.length],
   );
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
@@ -82,7 +82,7 @@ export default function ChatGrid({
                 return (
                   <div
                     key={m.id}
-                    className={`px-2.5 py-2 sm:px-2 sm:py-2 min-h-[42px] min-w-fit flex items-center ${
+                    className={`px-2.5 py-2 sm:px-2 sm:py-2 min-h-[42px] min-w-0 overflow-hidden flex items-center ${
                       isCollapsed ? 'justify-center' : 'justify-between'
                     } overflow-visible rounded-lg backdrop-blur-sm shadow-[0_1px_8px_rgba(0,0,0,0.25)] ring-1 ${
                       m.good
