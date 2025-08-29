@@ -12,7 +12,7 @@ import AuthModal from '@/components/modals/AuthModal';
 import { cn } from '@/lib/utils'
 import ThreadSidebar from '@/components/chat/ThreadSidebar'
 import HomeAiInput from '@/components/home/HomeAiInput'
-import { fetchThreads, createThread as createThreadDb, addMessage as addMessageDb, deleteThread as deleteThreadDb } from '@/lib/data'
+import { fetchThreads, createThread as createThreadDb, addMessage as addMessageDb, deleteThread as deleteThreadDb } from '@/lib/db'
 import { createChatActions } from '@/lib/chatActions'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -482,6 +482,11 @@ export default function OpenFiestaChat() {
                   </svg>
                 </button>
 
+                {/* Inline Support button on mobile header */}
+                <div className="sm:hidden">
+                  <SupportDropdown theme={theme.mode === 'dark' ? 'dark' : 'light'} inline />
+                </div>
+
                 {mobileActionsOpen && (
                   <div className="absolute right-0 top-11 z-50 rounded-xl border border-white/15 bg-black/60 backdrop-blur-md shadow-xl p-2 flex items-center gap-2">
                     <button
@@ -568,8 +573,10 @@ export default function OpenFiestaChat() {
         theme="dark"
       />
 
-      {/* Support dropdown floating action at bottom-right */}
-      <SupportDropdown theme={theme.mode === 'dark' ? 'dark' : 'light'} />
+      {/* Support dropdown floating action at bottom-right - hidden on mobile */}
+      <div className="hidden sm:block">
+        <SupportDropdown theme={theme.mode === 'dark' ? 'dark' : 'light'} />
+      </div>
     </div>
   )
 }

@@ -13,6 +13,8 @@ import {
 
 interface SupportDropdownProps {
   theme?: "light" | "dark";
+  // When true, renders as an inline button suitable for headers (no fixed bottom positioning)
+  inline?: boolean;
 }
 
 import { SUPPORT_CONFIG } from "@/lib/constants";
@@ -23,9 +25,12 @@ const UPI_MSG = SUPPORT_CONFIG.UPI_MSG;
 
 const SupportDropdown: React.FC<SupportDropdownProps> = ({
   theme = "light",
+  inline = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Responsive QR size for very small devices
+  const [qrSize, setQrSize] = useState<number>(120);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Handle click outside to close dropdown
@@ -51,6 +56,20 @@ const SupportDropdown: React.FC<SupportDropdownProps> = ({
     };
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
+  }, []);
+
+  // Compute QR code size for small screens to avoid overflow
+  useEffect(() => {
+    const compute = () => {
+      const w = typeof window !== "undefined" ? window.innerWidth : 1024;
+      // Keep smaller on very small devices
+      if (w < 360) setQrSize(96);
+      else if (w < 420) setQrSize(108);
+      else setQrSize(120);
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
   }, []);
 
   const copyUpiId = async () => {
@@ -85,15 +104,25 @@ const SupportDropdown: React.FC<SupportDropdownProps> = ({
   )}&tn=${encodeURIComponent(UPI_MSG)}&cu=INR`;
 
   return (
-    <div ref={dropdownRef} className="fixed bottom-6 right-4 sm:right-6 z-50">
+    <div
+      ref={dropdownRef}
+      className={
+        inline
+          ? "relative z-50"
+          : "fixed right-3 sm:right-6 z-50 bottom-24 sm:bottom-6"
+      }
+      style={inline ? undefined : { paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
       {/* Dropdown Menu */}
       <div
         className={`
-          absolute bottom-16 right-0 mb-2 w-[calc(100vw-2rem)] max-w-xs sm:w-72 md:w-64 lg:w-[18rem] rounded-xl backdrop-blur-md border shadow-xl
-          transform transition-all duration-300 ease-out origin-bottom-right
+          absolute ${inline ? "top-12 right-0" : "bottom-16 right-0 mb-2"} w-[calc(100vw-2rem)] max-w-xs sm:w-72 md:w-64 lg:w-[18rem] rounded-xl backdrop-blur-md border shadow-xl
+          transform transition-all duration-300 ease-out ${inline ? "origin-top-right" : "origin-bottom-right"}
           ${
             isOpen
               ? "opacity-100 scale-100 translate-y-0"
+              : inline
+              ? "opacity-0 scale-95 -translate-y-2 pointer-events-none"
               : "opacity-0 scale-95 translate-y-2 pointer-events-none"
           }
           ${
@@ -169,16 +198,16 @@ const SupportDropdown: React.FC<SupportDropdownProps> = ({
                 )}
               </button>
             </div>
-            <div className="bg-white p-2 rounded-lg  flex flex-col items-center">
+            <div className="bg-white p-2 rounded-lg flex flex-col items-center w-full max-w-[200px] sm:max-w-[220px] mx-auto">
               <QRCode
                 value={upiUrl}
-                size={120}
+                size={qrSize}
                 bgColor="#fff"
                 fgColor="#222"
               />
-              <div className="mt-2 text-xs text-center text-gray-500">
-                UPI ID:{" "}
-                <span className="font-mono text-xs text-gray-800">
+              <div className="mt-2 text-xs text-center text-gray-500 w-full break-words">
+                UPI ID: {" "}
+                <span className="font-mono text-xs text-gray-800 break-all">
                   {UPI_ID}
                 </span>
               </div>
@@ -208,7 +237,7 @@ const SupportDropdown: React.FC<SupportDropdownProps> = ({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          w-10 h-10 sm:w-12 sm:h-12 rounded-full backdrop-blur-md border shadow-lg
+          ${inline ? "w-9 h-9" : "w-12 h-12 sm:w-12 sm:h-12"} rounded-full backdrop-blur-md border shadow-lg
           flex items-center justify-center transition-all duration-300
           ${
             theme === "dark"
