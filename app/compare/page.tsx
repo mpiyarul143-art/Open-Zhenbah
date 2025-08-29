@@ -27,6 +27,8 @@ import Settings from '@/components/app/Settings';
 import { Layers, Home as HomeIcon } from 'lucide-react';
 import SupportDropdown from '@/components/support-dropdown';
 import Link from 'next/link';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -472,6 +474,20 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Toasts for share notifications */}
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
 
       {/* Support dropdown floating action at bottom-right (hidden on mobile) */}
       <div className="hidden sm:block">
