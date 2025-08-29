@@ -27,7 +27,6 @@ export type ChatGridProps = {
   pairs: { user: ChatMessage; answers: ChatMessage[] }[];
   onEditUser: (turnIndex: number, newText: string) => void;
   onDeleteUser: (turnIndex: number) => void;
-  onDeleteAnswer: (turnIndex: number, modelId: string) => void;
   onToggle: (id: string) => void;
 };
 
@@ -40,14 +39,9 @@ export default function ChatGrid({
   pairs,
   onEditUser,
   onDeleteUser,
-  onDeleteAnswer,
   onToggle,
 }: ChatGridProps) {
-  const [pendingDelete, setPendingDelete] = useState<
-    | { type: 'turn'; turnIndex: number }
-    | { type: 'answer'; turnIndex: number; modelId: string }
-    | null
-  >(null);
+  const [pendingDelete, setPendingDelete] = useState<{ turnIndex: number } | null>(null);
   const headerCols = useMemo(
     () => headerTemplate || `repeat(${selectedModels.length}, minmax(260px, 1fr))`,
     [headerTemplate, selectedModels.length],
@@ -128,7 +122,6 @@ export default function ChatGrid({
                       </div>
                     )}
                     <div className="flex items-center gap-2">
-
                       <button
                         key={m.id}
                         onClick={() => onToggle(m.id)}
@@ -178,86 +171,81 @@ export default function ChatGrid({
             {pairs.map((row, i) => (
               <div key={i} className="space-y-3">
                 {/* User prompt as right-aligned red pill */}
-                <div className="px-2 flex justify-end">
-                  <div className="max-w-[68ch]">
-                    <div className="relative">
-                      {editingIdx === i ? (
-                        <div className="ml-auto">
-                          <textarea
-                            value={draft}
-                            onChange={(e) => setDraft(e.target.value)}
-                            className="w-full min-h-[40px] max-w-[68ch] text-sm leading-relaxed px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/60 resize-none focus:outline-none focus:ring-2 focus:ring-rose-500/50"
-                            placeholder="Edit your message..."
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                if (draft.trim()) {
-                                  onEditUser(i, draft.trim());
-                                  setEditingIdx(null);
-                                  setDraft('');
-                                }
-                              } else if (e.key === 'Escape') {
+                <div className="px-2 flex justify-end relative">
+                    {editingIdx === i && (
+                      <div className="ml-auto">
+                        <textarea
+                          value={draft}
+                          onChange={(e) => setDraft(e.target.value)}
+                          className="w-full min-h-[40px] max-w-[68ch] text-sm leading-relaxed px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/60 resize-none focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                          placeholder="Edit your message..."
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              if (draft.trim()) {
+                                onEditUser(i, draft.trim());
+                                setEditingIdx(null);
+                                setDraft('');
+                              }
+                            } else if (e.key === 'Escape') {
+                              setEditingIdx(null);
+                              setDraft('');
+                            }
+                          }}
+                        />
+                        <div className="mt-2 flex justify-end gap-2">
+                          <button
+                            onClick={() => {
+                              if (draft.trim()) {
+                                onEditUser(i, draft.trim());
                                 setEditingIdx(null);
                                 setDraft('');
                               }
                             }}
-                          />
-                          <div className="mt-2 flex justify-end gap-2">
-                            <button
-                              onClick={() => {
-                                if (draft.trim()) {
-                                  onEditUser(i, draft.trim());
-                                  setEditingIdx(null);
-                                  setDraft('');
-                                }
-                              }}
-                              className="px-3 py-1 text-xs rounded bg-rose-600 hover:bg-rose-700 text-white transition-colors"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditingIdx(null);
-                                setDraft('');
-                              }}
-                              className="px-3 py-1 text-xs rounded bg-white/10 hover:bg-white/20 text-white transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </div>
+                            className="px-3 py-1 text-xs rounded bg-rose-600 hover:bg-rose-700 text-white transition-colors"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingIdx(null);
+                              setDraft('');
+                            }}
+                            className="px-3 py-1 text-xs rounded bg-white/10 hover:bg-white/20 text-white transition-colors"
+                          >
+                            Cancel
+                          </button>
                         </div>
-                      ) : (
-                        <>
-                          <div className="ml-auto inline-flex items-center text-sm leading-relaxed px-3 py-1.5 rounded-2xl bg-[var(--accent-interactive-primary)] text-white shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
-                            <span className="truncate whitespace-pre-wrap break-words max-w-[68ch]">
-                              {row.user.content}
-                            </span>
-                          </div>
-                          <div className="mt-2 flex justify-end gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => {
-                                setEditingIdx(i);
-                                setDraft(row.user.content);
-                              }}
-                              className="icon-btn h-7 w-7 accent-focus"
-                              title="Edit message"
-                            >
-                              <Pencil size={14} />
-                            </button>
-                            <button
-                              onClick={() => onDeleteUser(i)}
-                              className="icon-btn h-7 w-7 accent-focus"
-                              title="Delete message"
-                            >
-                              <Trash size={14} />
-                            </button>
-                            <CopyToClipboard getText={() => row.user.content} />
-                          </div>
-                        </>
-                      )}
+                      </div>
+                    )}
+                    <div className="group flex gap-2 items-center justify-end sticky right-0 z-10">
+                      <div className="inline-flex items-center text-sm leading-relaxed px-3 py-3 rounded-md bg-[var(--accent-interactive-primary)] text-white shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
+                        <span className="truncate whitespace-pre-wrap break-words max-w-[68ch]">
+                          {row.user.content}
+                        </span>
+                      </div>
+                      <div className="hidden group-hover:flex order-first gap-1.5 ">
+                        <button
+                          onClick={() => {
+                            setEditingIdx(i);
+                            setDraft(row.user.content);
+                          }}
+                          className="icon-btn h-7 w-7 accent-focus "
+                          title="Edit message"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => setPendingDelete({ turnIndex: i })}
+                          className="icon-btn h-7 w-7 accent-focus "
+                          title="Delete message"
+                        >
+                          <Trash size={14} />
+                        </button>
+                        <CopyToClipboard getText={() => row.user.content} />
+                      </div>
                     </div>
-                  </div>
                 </div>
 
                 <div
@@ -290,25 +278,13 @@ export default function ChatGrid({
                                   : 'opacity-0 group-hover:opacity-100'
                               }`}
                             >
-                              <button
-                                onClick={() =>
-                                  setPendingDelete({
-                                    type: 'answer',
-                                    turnIndex: i,
-                                    modelId: m.id,
-                                  })
-                                }
-                                className="icon-btn h-7 w-7 accent-focus"
-                                title={`Delete ${m.label} response`}
-                              >
-                                <Trash size={12} />
-                              </button>
-
                               {selectedModels.length - 1 !== collapsedIds.length ? (
                                 <button
                                   onClick={() => {
-                                    setCollapsedIds(
-                                      () => selectedModels.map((i) => (i.id === m.id ? "NAI" : i.id )).filter((id) => id !== "NAI"),
+                                    setCollapsedIds(() =>
+                                      selectedModels
+                                        .map((i) => (i.id === m.id ? 'NAI' : i.id))
+                                        .filter((id) => id !== 'NAI'),
                                     );
                                   }}
                                   className="icon-btn h-7 w-7 accent-focus"
@@ -347,7 +323,7 @@ export default function ChatGrid({
                               String(ans.content || '').length > 0 &&
                               !['Thinking…', 'Typing…'].includes(String(ans.content)) ? (
                                 <>
-                                  <div className="max-w-[72ch] rounded-2xl bg-white/10 ring-1 ring-white/10 px-3 py-2">
+                                  <div className="rounded-2xl ring-white/10 px-3 py-2">
                                     <MarkdownLite text={sanitizeContent(ans.content)} />
                                   </div>
                                   {/* Token usage footer */}
@@ -458,22 +434,14 @@ export default function ChatGrid({
       {/* Delete confirmation dialog */}
       <ConfirmDialog
         open={pendingDelete !== null}
-        title={pendingDelete?.type === 'turn' ? 'Delete this turn?' : 'Delete model answer?'}
-        message={
-          pendingDelete?.type === 'turn'
-            ? 'This will remove your prompt and all model answers for this turn.'
-            : "This will remove the selected model's response for this turn."
-        }
+        title="Delete this turn answer"
+        message="This will remove your prompt and all model answers for this turn."
         confirmText="Delete"
         cancelText="Cancel"
         onCancel={() => setPendingDelete(null)}
         onConfirm={() => {
           if (!pendingDelete) return;
-          if (pendingDelete.type === 'turn') {
-            onDeleteUser(pendingDelete.turnIndex);
-          } else {
-            onDeleteAnswer(pendingDelete.turnIndex, pendingDelete.modelId);
-          }
+          onDeleteUser(pendingDelete.turnIndex);
           setPendingDelete(null);
         }}
       />
