@@ -3,7 +3,7 @@ import { safeUUID } from './uuid';
 import type { AiModel, ApiKeys, ChatMessage, ChatThread } from './types';
 import type { Project } from './projects';
 import { toast } from 'react-toastify';
-import { addMessage as addMessageDb, updateThreadTitle } from './data';
+import { addMessage as addMessageDb, updateThreadTitle } from '@/lib/db';
 
 const abortControllers: Record<string, AbortController> = {};
 

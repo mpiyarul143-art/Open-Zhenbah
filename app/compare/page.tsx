@@ -18,7 +18,7 @@ import { BACKGROUND_STYLES } from '@/lib/themes';
 import { safeUUID } from '@/lib/uuid';
 import LaunchScreen from '@/components/ui/LaunchScreen';
 import { useAuth } from '@/lib/auth';
-import { fetchThreads, createThread as createThreadDb, deleteThread as deleteThreadDb } from '@/lib/data'
+import { fetchThreads, createThread as createThreadDb, deleteThread as deleteThreadDb } from '@/lib/db'
 import { useRouter } from 'next/navigation';
 import GithubStar from '@/components/app/GithubStar';
 import ThemeToggle from '@/components/ThemeToggle';
