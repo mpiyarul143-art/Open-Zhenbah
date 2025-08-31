@@ -22,8 +22,8 @@ const nextConfig: NextConfig = {
   
   // Environment-specific configuration for shared URLs
   env: {
-    NEXT_PUBLIC_APP_URL: process.env.APP_URL || 'http://https://open-fiestaa.vercel.app',
-    NEXT_PUBLIC_SHARE_URL_BASE: process.env.SHARE_URL_BASE || process.env.APP_URL || 'http://https://open-fiestaa.vercel.app',
+    NEXT_PUBLIC_APP_URL: process.env.APP_URL || 'https://open-fiestaa.vercel.app',
+    NEXT_PUBLIC_SHARE_URL_BASE: process.env.SHARE_URL_BASE || process.env.APP_URL || 'https://open-fiestaa.vercel.app',
   },
   
   // Security headers and CORS configuration for production
