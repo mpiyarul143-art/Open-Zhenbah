@@ -43,6 +43,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Download } from 'lucide-react';
 import { ACCENT_UTILITY_CLASSES } from '../../lib/accentColors';
+import { useTheme } from '@/lib/themeContext';
+import { cn } from '@/lib/utils';
 
 type Props = { text: string };
 
@@ -176,7 +178,7 @@ function ProgressBar({
   );
 }
 
-const AudioPlayer = ({ audioUrl, filename }: { audioUrl: string; filename: string }) => {
+const AudioPlayer = ({ audioUrl, filename, isDark }: { audioUrl: string; filename: string; isDark: boolean }) => {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -281,6 +283,7 @@ const AudioPlayer = ({ audioUrl, filename }: { audioUrl: string; filename: strin
       }
       setCanPlay(true);
       await el.play();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       // Swallow AbortError which can occur if a new load interrupts play()
       if (e && e.name === 'AbortError') {
@@ -337,7 +340,10 @@ const AudioPlayer = ({ audioUrl, filename }: { audioUrl: string; filename: strin
             className="w-3 h-3 rounded-full animate-pulse"
             style={{ backgroundColor: 'var(--accent-interactive-primary)' }}
           ></div>
-          <span className="text-sm font-medium tracking-wide text-zinc-200 dark:text-zinc-100">
+          <span className={cn(
+            "text-sm font-medium tracking-wide",
+            isDark ? "text-zinc-200" : "text-gray-800"
+          )}>
             Generated Audio
           </span>
         </div>
@@ -479,14 +485,20 @@ const AudioPlayer = ({ audioUrl, filename }: { audioUrl: string; filename: strin
                   if (audioRef.current) audioRef.current.currentTime = next;
                 }}
               />
-              <span className="text-xs tabular-nums text-zinc-400 w-10">
+              <span className={cn(
+                "text-xs tabular-nums w-10",
+                isDark ? "text-zinc-400" : "text-gray-500"
+              )}>
                 {duration !== null ? formatTime(duration) : '--:--'}
               </span>
             </div>
           </div>
         </div>
       ) : (
-        <div className="flex items-center gap-3 text-sm mb-4 text-zinc-600 dark:text-zinc-300">
+        <div className={cn(
+          "flex items-center gap-3 text-sm mb-4",
+          isDark ? "text-zinc-600" : "text-gray-500"
+        )}>
           {/* Distinct loading equalizer (different from image skeleton) */}
           <div className="flex items-end gap-1 h-6" aria-hidden>
             <span
@@ -521,7 +533,10 @@ const AudioPlayer = ({ audioUrl, filename }: { audioUrl: string; filename: strin
       {/* Footer actions */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 justify-between">
         {/* Context (filename) */}
-        <div className="text-xs text-zinc-600 dark:text-zinc-400 truncate" title={filename}>
+        <div className={cn(
+          "text-xs truncate",
+          isDark ? "text-zinc-600" : "text-gray-500"
+        )} title={filename}>
           {filename}
         </div>
 
@@ -542,6 +557,9 @@ const AudioPlayer = ({ audioUrl, filename }: { audioUrl: string; filename: strin
 };
 
 export default function MarkdownLite({ text }: Props) {
+  const { theme } = useTheme();
+  const isDark = theme.mode === 'dark';
+  
   if (!text) return null;
 
   // Check for audio content first (supports multiple formats)
@@ -572,12 +590,15 @@ export default function MarkdownLite({ text }: Props) {
     const filename = `openfiesta-audio-${timestamp}.mp3`;
 
     return (
-      <div className="text-zinc-100 leading-relaxed">
+      <div className={cn(
+        "leading-relaxed",
+        isDark ? "text-zinc-100" : "text-gray-800"
+      )}>
         {/* Keep the original marker in DOM but hide it from UI */}
         <span aria-hidden style={{ display: 'none' }}>
           {text}
         </span>
-        <AudioPlayer audioUrl={audioUrl} filename={filename} />
+        <AudioPlayer audioUrl={audioUrl} filename={filename} isDark={isDark} />
       </div>
     );
   }
@@ -586,18 +607,26 @@ export default function MarkdownLite({ text }: Props) {
   const blocks = splitFencedCodeBlocks(text);
 
   return (
-    <div className="text-zinc-100 leading-relaxed whitespace-pre-wrap text-[13.5px] sm:text-sm space-y-2 tracking-[0.004em]">
+    <div className={cn(
+      "leading-relaxed whitespace-pre-wrap text-[13.5px] sm:text-sm space-y-2 tracking-[0.004em]",
+      isDark ? "text-zinc-100" : "text-gray-800"
+    )}>
       {blocks.map((b, i) =>
         b.type === 'code' ? (
           <pre
             key={i}
-            className="my-2 rounded bg-black/40 border border-white/10 p-2 overflow-x-auto text-xs"
+            className={cn(
+              "my-2 rounded border p-2 overflow-x-auto text-xs",
+              isDark 
+                ? "bg-black/40 border-white/10"
+                : "bg-gray-100/60 border-gray-300/40"
+            )}
           >
             <code>{maybeDeescapeJsonish(b.content)}</code>
           </pre>
         ) : (
           // For non-code text, clean simple math delimiters like \( \) \[ \] and $...$
-          <BlockRenderer key={i} text={sanitizeMath(b.content)} />
+          <BlockRenderer key={i} text={sanitizeMath(b.content)} isDark={isDark} />
         ),
       )}
     </div>
@@ -667,7 +696,7 @@ function maybeDeescapeTextish(src: string): string {
 }
 
 // Image component that shows a skeleton placeholder until the image loads
-function ImageWithSkeleton({ src, alt, filename }: { src: string; alt: string; filename: string }) {
+function ImageWithSkeleton({ src, alt, filename, isDark }: { src: string; alt: string; filename: string; isDark: boolean }) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const [dimensions, setDimensions] = useState<{ w: number; h: number } | null>(null);
@@ -738,7 +767,10 @@ function ImageWithSkeleton({ src, alt, filename }: { src: string; alt: string; f
                 boxShadow: '0 0 8px var(--accent-interactive-primary)',
               }}
             />
-            <span className="text-sm font-medium text-zinc-100">
+            <span className={cn(
+              "text-sm font-medium",
+              isDark ? "text-zinc-100" : "text-gray-800"
+            )}>
               {loaded && !failed ? (
                 'Generated Image'
               ) : (
@@ -750,7 +782,10 @@ function ImageWithSkeleton({ src, alt, filename }: { src: string; alt: string; f
             </span>
           </div>
           {dimensions && (
-            <span className="text-[11px] text-zinc-400 tabular-nums">
+            <span className={cn(
+              "text-[11px] tabular-nums",
+              isDark ? "text-zinc-400" : "text-gray-500"
+            )}>
               {dimensions.w}×{dimensions.h}px
             </span>
           )}
@@ -973,7 +1008,7 @@ function ImageWithSkeleton({ src, alt, filename }: { src: string; alt: string; f
 }
 
 // Renders a text block with support for paragraphs, simple lists, and tables.
-function BlockRenderer({ text }: { text: string }) {
+function BlockRenderer({ text, isDark }: { text: string; isDark: boolean }) {
   // Normalize newlines
   const rawLines = text.replace(/\r\n?/g, '\n').split('\n');
   const lines = normalizeTableLikeMarkdown(rawLines);
@@ -996,7 +1031,7 @@ function BlockRenderer({ text }: { text: string }) {
             level <= 2 ? 'text-base md:text-lg' : level === 3 ? 'text-sm md:text-base' : 'text-sm'
           }`}
         >
-          {renderInline(content)}
+          {renderInline(content, isDark)}
         </Tag>,
       );
       i++;
@@ -1011,8 +1046,13 @@ function BlockRenderer({ text }: { text: string }) {
         i++;
       }
       nodes.push(
-        <div key={`q-${i}`} className="my-2 px-3 py-2 rounded-md border border-white/10 bg-white/5">
-          <BlockRenderer text={quoteLines.join('\n')} />
+        <div key={`q-${i}`} className={cn(
+          "my-2 px-3 py-2 rounded-md border",
+          isDark 
+            ? "border-white/10 bg-white/5"
+            : "border-gray-300/30 bg-gray-100/40"
+        )}>
+          <BlockRenderer text={quoteLines.join('\n')} isDark={isDark} />
         </div>,
       );
       continue;
@@ -1020,11 +1060,16 @@ function BlockRenderer({ text }: { text: string }) {
 
     // Table detection: header | --- | --- | followed by rows starting with |
     if (isTableHeader(lines, i)) {
-      const { element, nextIndex } = parseTable(lines, i);
+      const { element, nextIndex } = parseTable(lines, i, isDark);
       nodes.push(
         <div
           key={`tbl-${i}`}
-          className="my-2 overflow-x-auto rounded-lg ring-1 ring-white/20 bg-gradient-to-b from-black/40 to-black/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] p-2"
+          className={cn(
+            "my-2 overflow-x-auto rounded-lg ring-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] p-2",
+            isDark 
+              ? "ring-white/20 bg-gradient-to-b from-black/40 to-black/20"
+              : "ring-gray-300/30 bg-gradient-to-b from-white/40 to-gray-50/20"
+          )}
         >
           {element}
         </div>,
@@ -1035,7 +1080,7 @@ function BlockRenderer({ text }: { text: string }) {
 
     // List detection: -, *, or numbered like 1.
     if (isListLine(line)) {
-      const { element, nextIndex } = parseList(lines, i);
+      const { element, nextIndex } = parseList(lines, i, isDark);
       nodes.push(
         <div key={`list-${i}`} className="my-1">
           {element}
@@ -1070,7 +1115,7 @@ function BlockRenderer({ text }: { text: string }) {
     }
     nodes.push(
       <p key={`p-${start}`} className="whitespace-pre-wrap my-1">
-        {renderInline(buf.join('\n'))}
+        {renderInline(buf.join('\n'), isDark)}
       </p>,
     );
   }
@@ -1102,6 +1147,7 @@ function isTableHeader(lines: string[], idx: number): boolean {
 function parseTable(
   lines: string[],
   idx: number,
+  isDark: boolean,
 ): { element: React.ReactElement; nextIndex: number } {
   const headerLine = lines[idx] || '';
   // skip separator line
@@ -1192,22 +1238,32 @@ function parseTable(
           {headers.map((h, hi) => (
             <th
               key={hi}
-              className="text-left font-semibold text-zinc-100 bg-black/30 border border-white/15 px-3 py-1.5"
+              className={cn(
+                "text-left font-semibold border px-3 py-1.5",
+                isDark 
+                  ? "text-zinc-100 bg-black/30 border-white/15"
+                  : "text-gray-800 bg-gray-100/60 border-gray-300/40"
+              )}
             >
-              {renderInline(h)}
+              {renderInline(h, isDark)}
             </th>
           ))}
         </tr>
       </thead>
       <tbody>
         {body.map((r, ri) => (
-          <tr key={ri} className="even:bg-black/20">
+          <tr key={ri} className={isDark ? "even:bg-black/20" : "even:bg-gray-50/40"}>
             {r.map((c, ci) => (
               <td
                 key={ci}
-                className="align-top border border-white/15 px-3 py-1.5 whitespace-pre-wrap text-zinc-200"
+                className={cn(
+                  "align-top border px-3 py-1.5 whitespace-pre-wrap",
+                  isDark 
+                    ? "border-white/15 text-zinc-200"
+                    : "border-gray-300/40 text-gray-700"
+                )}
               >
-                {renderInline(c)}
+                {renderInline(c, isDark)}
               </td>
             ))}
           </tr>
@@ -1233,6 +1289,7 @@ function isListLine(line: string): boolean {
 function parseList(
   lines: string[],
   idx: number,
+  isDark: boolean,
 ): { element: React.ReactElement; nextIndex: number } {
   const items: { marker: 'ul' | 'ol'; text: string }[] = [];
   let i = idx;
@@ -1261,7 +1318,7 @@ function parseList(
       <ol className="list-decimal list-outside pl-5 space-y-1">
         {items.map((it, idx2) => (
           <li key={idx2} className="whitespace-pre-wrap">
-            {renderInline(it.text)}
+            {renderInline(it.text, isDark)}
           </li>
         ))}
       </ol>
@@ -1269,7 +1326,7 @@ function parseList(
       <ul className="list-disc list-outside pl-5 space-y-1">
         {items.map((it, idx2) => (
           <li key={idx2} className="whitespace-pre-wrap">
-            {renderInline(it.text)}
+            {renderInline(it.text, isDark)}
           </li>
         ))}
       </ul>
@@ -1278,7 +1335,7 @@ function parseList(
   return { element, nextIndex: i };
 }
 
-function renderInline(input: string): React.ReactNode[] {
+function renderInline(input: string, isDark?: boolean): React.ReactNode[] {
   // First handle images ![alt](url)
   const imageSegments = input.split(/(!\[[^\]]*\]\([^)]+\))/g);
   const out: React.ReactNode[] = [];
@@ -1307,6 +1364,7 @@ function renderInline(input: string): React.ReactNode[] {
           src={src}
           alt={alt}
           filename={filename}
+          isDark={isDark ?? true}
         />,
       );
       return;

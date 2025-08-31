@@ -10,7 +10,7 @@ export default function Loading({ backgroundClass }: { backgroundClass: string }
               <div
                 role="status"
                 aria-live="polite"
-                className="w-full max-w-xs rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-xl p-6 text-center"
+                className="w-full max-w-xs rounded-2xl border border-white/10 bg-black/20 backdrop-blur-md shadow-xl p-6 text-center"
               >
                 {/* Spinner */}
                 <svg

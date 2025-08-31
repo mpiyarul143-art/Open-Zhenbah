@@ -1,6 +1,15 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+// Extend Window interface for ChatInterface handlers
+declare global {
+  interface Window {
+    handleEditMessage?: (messageId: string, content: string) => void;
+    handleShareMessage?: (message: ChatMessage) => void;
+    handleSubmit?: (text: string) => Promise<void>;
+  }
+}
+
+import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { useLocalStorage } from '@/lib/useLocalStorage';
 import { mergeModels, useCustomModels } from '@/lib/customModels';
 import { ChatMessage, ApiKeys, ChatThread, AiModel } from '@/lib/types';
@@ -14,9 +23,9 @@ import ThreadSidebar from '@/components/chat/ThreadSidebar'
 import HomeAiInput from '@/components/home/HomeAiInput'
 import { fetchThreads, createThread as createThreadDb, addMessage as addMessageDb, deleteThread as deleteThreadDb } from '@/lib/db'
 import { createChatActions } from '@/lib/chatActions'
-import { ToastContainer } from 'react-toastify'
+import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
-import { Menu, Layers } from 'lucide-react'
+import { Layers } from 'lucide-react'
 import Link from 'next/link'
 import GithubStar from '@/components/app/GithubStar'
 import ThemeToggle from '@/components/ThemeToggle'
@@ -28,12 +37,21 @@ import LaunchScreen from '@/components/ui/LaunchScreen'
 import { useTheme } from '@/lib/themeContext'
 import { BACKGROUND_STYLES } from '@/lib/themes'
 import SupportDropdown from '@/components/support-dropdown'
+import ProjectModal from '@/components/modals/ProjectModal'
+import { Project } from '@/lib/projects'
 
 export default function OpenFiestaChat() {
   const { user } = useAuth()
-  const [isDark, setIsDark] = useState(true)
-  // Hydration + splash to match compare page
   const { theme } = useTheme()
+  const isDark = theme.mode === 'dark'
+  
+  const guestMode = (process.env.NODE_ENV !== 'production') && (process.env.NEXT_PUBLIC_GUEST_MODE === 'true')
+  if (process.env.NEXT_PUBLIC_GUEST_MODE === 'true' && process.env.NODE_ENV === 'production') {
+    if (typeof window !== 'undefined') {
+      // eslint-disable-next-line no-console
+      console.warn('[GuestMode] Ignored in production build.')
+    }
+  }
   const [isHydrated, setIsHydrated] = useState(false)
   const [showSplash, setShowSplash] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -41,6 +59,8 @@ export default function OpenFiestaChat() {
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false)
   const [modelModalOpen, setModelModalOpen] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [projectModalOpen, setProjectModalOpen] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [threads, setThreads] = useLocalStorage<ChatThread[]>('ai-fiesta:threads', [])
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
   const [editingMessage, setEditingMessage] = useState<string>('')
@@ -60,11 +80,26 @@ export default function OpenFiestaChat() {
     selectProject,
   } = useProjects()
   
-  // Get active thread (only home threads)
-  const homeThreads = useMemo(() => 
-    threads.filter(t => t.pageType === 'home'),
-    [threads]
-  )
+  // Project modal handlers
+  const handleCreateProject = () => {
+    setEditingProject(null)
+    setProjectModalOpen(true)
+  }
+  
+  const handleEditProject = (project: Project) => {
+    setEditingProject(project)
+    setProjectModalOpen(true)
+  }
+  
+  const handleSaveProject = (project: Project) => {
+    if (editingProject) {
+      updateProject(project)
+    } else {
+      createProject(project)
+    }
+    setEditingProject(null)
+    setProjectModalOpen(false)
+  }
   
   const visibleHomeThreads = useMemo(() => threads.filter(t => t.pageType === 'home' && (!activeProjectId || t.projectId === activeProjectId)), [threads, activeProjectId])
 
@@ -96,11 +131,8 @@ export default function OpenFiestaChat() {
 
   const chatRef = useRef<ChatInterfaceRef | null>(null)
 
-  // State for chat actions - disabled to prevent duplicate loading animations
-  const [loadingIds, setLoadingIds] = useState<string[]>([])
-  const [loadingIdsInit, setLoadingIdsInit] = useState<string[]>([])
-
-  // Create chat actions for handling AI responses
+  // Create chat actions for handling AI responses - unused but kept for potential future use
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const chatActions = useMemo(() => {
     if (!activeThread) {
       return null;
@@ -116,12 +148,17 @@ export default function OpenFiestaChat() {
       keys: apiKeys,
       userId: user?.id || undefined,
     })
-  }, [activeThread, selectedHomeModel, apiKeys, user?.id, threads])
+  }, [activeThread, selectedHomeModel, apiKeys, user?.id, threads, setThreads])
 
   // Load threads from Supabase when user is authenticated
   useEffect(() => {
     const load = async () => {
+      // In guest mode, never touch DB
+      if (guestMode) {
+        return
+      }
       if (!user?.id) {
+        // In guest mode, keep local threads; otherwise clear when logged out
         setThreads([])
         setActiveThreadId(null)
         return
@@ -155,12 +192,12 @@ export default function OpenFiestaChat() {
   // Header shows no brand logo; the chat avatar displays model logo instead
 
   // Handle edit message functionality
-  const handleEditMessage = (messageId: string, content: string) => {
+  const handleEditMessage = useCallback((messageId: string, content: string) => {
     setEditingMessage(content)
-  }
+  }, [])
 
   // Handle share message functionality  
-  const handleShareMessage = (message: ChatMessage) => {
+  const handleShareMessage = useCallback((message: ChatMessage) => {
     if (!activeThread) return;
     
     // Create a temporary thread with just this message for sharing
@@ -177,23 +214,20 @@ export default function OpenFiestaChat() {
         if (result.success && result.url) {
           shareService.copyToClipboard(result.url).then(copySuccess => {
             if (copySuccess) {
-              const { toast } = require('react-toastify');
               toast.success("Message link copied to clipboard!");
             } else {
-              const { toast } = require('react-toastify');
               toast.info("Clipboard access failed. Link: " + result.url);
             }
           });
         } else {
-          const { toast } = require('react-toastify');
           toast.error(result.error || "Failed to create share link");
         }
       });
     });
-  }
+  }, [activeThread])
 
   // When user submits text, also record it into a thread shown in the sidebar
-  const handleSubmit = async (text: string) => {
+  const handleSubmit = useCallback(async (text: string) => {
     const content = text.trim()
     if (!content) {
       // Ensure loader is off for empty submissions
@@ -201,8 +235,8 @@ export default function OpenFiestaChat() {
       return;
     }
     
-    // Check if user is authenticated
-    if (!user) {
+    // Check if user is authenticated, allow guest mode bypass
+    if (!user?.id && !guestMode) {
       setAuthModalOpen(true)
       // Ensure loader is off if auth required
       chatRef.current?.setLoading(false)
@@ -213,21 +247,40 @@ export default function OpenFiestaChat() {
     setEditingMessage('')
     
     // Create thread if none exists
+    let createdThreadTemp: ChatThread | null = null
     if (!activeThreadId) {
-      try {
-        const newTitle = content.length > 60 ? content.slice(0, 57) + '…' : content
-        const created = await createThreadDb({
-          userId: user.id,
+      const newTitle = content.length > 60 ? content.slice(0, 57) + '…' : content
+      if (guestMode) {
+        const localId = (typeof crypto !== 'undefined' && (crypto as any).randomUUID)
+          ? (crypto as any).randomUUID()
+          : `guest-${Date.now()}`
+        const createdLocal: ChatThread = {
+          id: localId,
           title: newTitle,
-          projectId: activeProjectId || null,
+          messages: [],
+          createdAt: Date.now(),
+          projectId: activeProjectId || undefined,
           pageType: 'home',
-          initialMessage: null,
-        })
-        setThreads((prev) => [created, ...prev])
-        setActiveThreadId(created.id)
-      } catch (e) {
-        console.error('❌ Failed to create thread:', e)
-        return;
+        }
+        setThreads((prev) => [createdLocal, ...prev])
+        setActiveThreadId(createdLocal.id)
+        createdThreadTemp = createdLocal
+      } else if (user?.id) {
+        try {
+          const created = await createThreadDb({
+            userId: user.id,
+            title: newTitle,
+            projectId: activeProjectId || null,
+            pageType: 'home',
+            initialMessage: null,
+          })
+          setThreads((prev) => [created, ...prev])
+          setActiveThreadId(created.id)
+          createdThreadTemp = created
+        } catch (e) {
+          console.error('❌ Failed to create thread:', e)
+          return;
+        }
       }
     }
     
@@ -239,7 +292,9 @@ export default function OpenFiestaChat() {
     })
 
     // Get current thread immediately - no timeout needed
-    const currentThread = threads.find(t => t.id === activeThreadId) || threads.find(t => t.id === threads[0]?.id);
+    const currentThread = createdThreadTemp
+      || threads.find(t => t.id === activeThreadId)
+      || threads.find(t => t.id === threads[0]?.id);
     if (currentThread && selectedHomeModel) {
       const currentChatActions = createChatActions({
         threads,
@@ -287,40 +342,47 @@ export default function OpenFiestaChat() {
       });
       chatRef.current?.setLoading(false)
     }
-  }
+  }, [user, activeProjectId, activeThreadId, threads, selectedHomeModel, apiKeys, setThreads, setActiveThreadId])
 
   // Expose handlers to window for ChatInterface to access
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      (window as any).handleEditMessage = handleEditMessage;
-      (window as any).handleShareMessage = handleShareMessage;
-      (window as any).handleSubmit = handleSubmit;
+      window.handleEditMessage = handleEditMessage;
+      window.handleShareMessage = handleShareMessage;
+      window.handleSubmit = handleSubmit;
     }
     return () => {
       if (typeof window !== 'undefined') {
-        delete (window as any).handleEditMessage;
-        delete (window as any).handleShareMessage;
-        delete (window as any).handleSubmit;
+        delete window.handleEditMessage;
+        delete window.handleShareMessage;
+        delete window.handleSubmit;
       }
     }
-  }, [handleSubmit]);
+  }, [handleSubmit, handleShareMessage, handleEditMessage]);
 
   // Load messages into ChatInterface when active thread changes
   useEffect(() => {
     if (chatRef.current && activeThread) {
       // Always load messages, even if empty array
       const convertedMessages = (activeThread.messages || []).map((msg, index) => {
-        const base = {
+        const base: {
+          id: string;
+          content: string;
+          role: "user" | "assistant";
+          timestamp: Date;
+          avatarUrl?: string;
+          avatarAlt?: string;
+        } = {
           id: `${activeThread.id}-${msg.ts || Date.now()}-${index}`,
           content: msg.content,
           role: msg.role as "user" | "assistant",
           timestamp: new Date(msg.ts || Date.now()),
-        } as any
+        }
         if (msg.role === 'assistant') {
           const id = (msg.modelId || '').toLowerCase()
           const prov = (msg.provider || '').toLowerCase()
           const txt = `${id} ${prov}`
-          let avatarUrl = '/brand.png'
+          let avatarUrl = '/brand.svg'
           let avatarAlt = 'AI Assistant'
           if (/openai|\bgpt\b|^gpt-|\bo3\b|\bo4\b/.test(txt)) {
             avatarUrl = 'https://cdn.simpleicons.org/openai/ffffff'
@@ -339,7 +401,7 @@ export default function OpenFiestaChat() {
       });
       chatRef.current.loadMessages(convertedMessages);
     }
-  }, [activeThread?.id, activeThread?.messages]);
+  }, [activeThread]);
 
   return (
     <div className={cn("min-h-screen w-full relative", isDark ? "dark" : "")}> 
@@ -353,17 +415,19 @@ export default function OpenFiestaChat() {
           }}
         />
       ) : (
-        <div className="min-h-screen w-full bg-[#fff9f5] relative">
-          <div
-            className="absolute inset-0 z-0"
-            style={{
-              backgroundImage: `
-                radial-gradient(circle at 20% 80%, rgba(255, 220, 190, 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255, 245, 238, 0.35) 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, rgba(255, 210, 180, 0.15) 0%, transparent 50%)`,
-            }}
-          />
-        </div>
+        /* Aurora Dream Corner Whispers */
+        <div
+          className="absolute inset-0 z-0"
+          style={{
+            background: `
+              radial-gradient(ellipse 85% 65% at 8% 8%, rgba(175, 109, 255, 0.42), transparent 60%),
+              radial-gradient(ellipse 75% 60% at 75% 35%, rgba(255, 235, 170, 0.55), transparent 62%),
+              radial-gradient(ellipse 70% 60% at 15% 80%, rgba(255, 100, 180, 0.40), transparent 62%),
+              radial-gradient(ellipse 70% 60% at 92% 92%, rgba(120, 190, 255, 0.45), transparent 62%),
+              linear-gradient(180deg, #f7eaff 0%, #fde2ea 100%)
+            `,
+          }}
+        />
       )}
 
       {/* Soft vignette for dark mode */}
@@ -395,7 +459,23 @@ export default function OpenFiestaChat() {
             activeId={activeThreadId}
             onSelectThread={(id) => setActiveThreadId(id)}
             onNewChat={async () => {
-              if (!user) {
+              if (guestMode) {
+                const localId = (typeof crypto !== 'undefined' && (crypto as any).randomUUID)
+                  ? (crypto as any).randomUUID()
+                  : `guest-${Date.now()}`
+                const createdLocal: ChatThread = {
+                  id: localId,
+                  title: 'New Chat',
+                  messages: [],
+                  createdAt: Date.now(),
+                  projectId: activeProjectId || undefined,
+                  pageType: 'home',
+                }
+                setThreads(prev => [createdLocal, ...prev])
+                setActiveThreadId(createdLocal.id)
+                return
+              }
+              if (!user?.id) {
                 setAuthModalOpen(true)
                 return
               }
@@ -417,11 +497,15 @@ export default function OpenFiestaChat() {
             onCloseMobile={() => setMobileSidebarOpen(false)}
             onOpenMobile={() => setMobileSidebarOpen(true)}
             onDeleteThread={async (id) => {
-              if (!user?.id) return;
-              try {
-                await deleteThreadDb(user.id, id);
-              } catch (e) {
-                console.warn('Failed to delete home thread in DB, removing locally:', e);
+              if (!guestMode && user?.id) {
+                try {
+                  await deleteThreadDb(user.id, id);
+                } catch (e) {
+                  console.warn('Failed to delete home thread in DB, removing locally:', e);
+                }
+              } else if (!guestMode && !user?.id) {
+                // Not authenticated and not in guest mode -> do nothing
+                return;
               }
               setThreads((prev) => {
                 const next = prev.filter((t) => t.id !== id);
@@ -439,37 +523,53 @@ export default function OpenFiestaChat() {
             projects={projects}
             activeProjectId={activeProjectId}
             onSelectProject={selectProject}
-            onCreateProject={createProject}
-            onUpdateProject={updateProject}
+            onCreateProject={handleCreateProject}
+            onUpdateProject={handleEditProject}
             onDeleteProject={deleteProject}
           />
 
-          {/* Main Content */}
-          <div className="flex-1 min-w-0 flex flex-col h-[calc(100vh-2rem)] lg:h-[calc(100vh-3rem)] overflow-hidden relative">
-            {/* Mobile Header with Hamburger */}
-            <div className="lg:hidden flex items-center justify-between p-4 border-b border-white/10">
-              <button
-                onClick={() => setMobileSidebarOpen(true)}
-                className="inline-flex items-center justify-center h-9 w-9 rounded-xl bg-gradient-to-r from-white/12 to-white/8 border border-white/15 text-white hover:from-white/18 hover:to-white/12 hover:border-white/25 backdrop-blur-sm shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
-                aria-label="Open menu"
-                title="Menu"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-              {/* Right: Compare (small) + Actions trigger (mobile) */}
-              <div className="relative flex items-center gap-2">
-                <Link
-                  href="/compare"
-                  className="inline-block bg-red-950 text-red-400 border border-red-400 border-b-2 font-medium overflow-hidden relative px-2 py-1 rounded-md hover:brightness-150 hover:border-t-2 hover:border-b active:opacity-75 outline-none duration-300 group text-[10px]"
+        {/* Main Content */}
+        <div className="flex-1 min-w-0 flex flex-col h-[calc(100vh-2rem)] lg:h-[calc(100vh-3rem)] overflow-hidden relative">
+          {/* Mobile Header with Hamburger */}
+          <div className={cn(
+            "lg:hidden flex items-center justify-between p-4 border-b",
+            isDark ? "border-white/10" : "border-zinc-200"
+          )}>
+            <button
+              onClick={() => setMobileSidebarOpen(true)}
+              className={cn(
+                "inline-flex items-center justify-center h-9 w-9 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95",
+                isDark
+                  ? "bg-gradient-to-r from-white/12 to-white/8 border border-white/15 text-white hover:from-white/18 hover:to-white/12 hover:border-white/25 backdrop-blur-sm shadow-lg"
+                  : "bg-white border border-zinc-300 text-zinc-700 hover:bg-zinc-50 shadow-sm"
+              )}
+              aria-label="Open menu"
+              title="Menu"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            {/* Right: Compare (small) + Actions trigger (mobile) */}
+            <div className="relative flex items-center gap-2">
+              <Link
+                href="/compare"
+                  className={cn(
+                    "inline-block font-medium overflow-hidden relative px-2 py-1 rounded-md outline-none duration-300 group text-[10px]",
+                    isDark
+                      ? "bg-red-950 text-red-400 border border-red-400 border-b-2 hover:brightness-150 hover:border-t-2 hover:border-b active:opacity-75"
+                      : "bg-red-100 text-red-700 border border-red-300 hover:bg-red-200 active:opacity-80"
+                  )}
                 >
                   <span className="bg-red-400 shadow-red-400 absolute -top-[150%] left-0 inline-flex w-40 h-[3px] rounded-md opacity-50 group-hover:top-[150%] duration-500 shadow-[0_0_10px_10px_rgba(0,0,0,0.3)]"></span>
                   Compare Models
                 </Link>
                 <button
                   onClick={() => setMobileActionsOpen((v) => !v)}
-                  className="inline-flex items-center justify-center h-9 w-9 rounded-md border border-white/15 bg-white/5 hover:bg-white/10 shadow"
+                  className={cn(
+                    "inline-flex items-center justify-center h-9 w-9 rounded-md shadow",
+                    isDark ? "border border-white/15 bg-white/5 hover:bg-white/10 text-white" : "border border-zinc-300 bg-white hover:bg-zinc-50 text-zinc-700"
+                  )}
                   aria-label="Open quick actions"
                   title="Actions"
                 >
@@ -488,10 +588,18 @@ export default function OpenFiestaChat() {
                 </div>
 
                 {mobileActionsOpen && (
-                  <div className="absolute right-0 top-11 z-50 rounded-xl border border-white/15 bg-black/60 backdrop-blur-md shadow-xl p-2 flex items-center gap-2">
+                  <div
+                    className={cn(
+                      "absolute right-0 top-11 z-50 rounded-xl shadow-xl p-2 flex items-center gap-2",
+                      isDark ? "border border-white/15 bg-black/60 backdrop-blur-md" : "border border-zinc-200 bg-white"
+                    )}
+                  >
                     <button
                       onClick={() => { setModelModalOpen(true); setMobileActionsOpen(false); }}
-                      className="inline-flex items-center gap-1.5 text-xs h-9 w-9 justify-center rounded-md border border-white/15 bg-white/5 hover:bg-white/10 shadow"
+                      className={cn(
+                        "inline-flex items-center gap-1.5 text-xs h-9 w-9 justify-center rounded-md shadow",
+                        isDark ? "border border-white/15 bg-white/5 hover:bg-white/10 text-white" : "border border-zinc-300 bg-white hover:bg-zinc-50 text-zinc-700"
+                      )}
                       title="Change models"
                       aria-label="Change models"
                     >
@@ -520,15 +628,20 @@ export default function OpenFiestaChat() {
             </div>
             {/* Use ChatInterface but hide its input; we provide HomeAiInput with model selector */}
             <ChatInterface ref={chatRef} hideInput />
-            <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6 bg-gradient-to-t from-black/20 to-transparent">
-              <HomeAiInput
-                isDark={isDark}
-                modelSelectorLabel={selectedHomeModel ? selectedHomeModel.label : "Choose model"}
-                onOpenModelSelector={() => setModelModalOpen(true)}
-                onSubmit={handleSubmit}
-                initialValue={editingMessage}
-                onClear={() => setEditingMessage('')}
-              />
+            <div className={cn(
+              "absolute bottom-0 left-0 right-0 p-4 lg:p-6 bg-gradient-to-t to-transparent pointer-events-none",
+              isDark ? "from-black/20" : "from-white/5"
+            )}>
+              <div className="pointer-events-auto">
+                <HomeAiInput
+                  isDark={isDark}
+                  modelSelectorLabel={selectedHomeModel ? selectedHomeModel.label : "Choose model"}
+                  onOpenModelSelector={() => setModelModalOpen(true)}
+                  onSubmit={handleSubmit}
+                  initialValue={editingMessage}
+                  onClear={() => setEditingMessage('')}
+                />
+              </div>
             </div>
             <ModelsModal
               open={modelModalOpen}
@@ -549,6 +662,13 @@ export default function OpenFiestaChat() {
       <AuthModal 
         isOpen={authModalOpen} 
         onClose={() => setAuthModalOpen(false)} 
+      />
+
+      <ProjectModal
+        open={projectModalOpen}
+        onClose={() => setProjectModalOpen(false)}
+        onSave={handleSaveProject}
+        project={editingProject}
       />
 
       {/* First-visit note modal */}

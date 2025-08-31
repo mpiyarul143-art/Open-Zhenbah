@@ -29,6 +29,7 @@ export type AiModel = {
   free?: boolean;
   good?: boolean; // highlight as recommended
   category?: 'text' | 'image' | 'audio'; // model capability category
+  tags?: string[]; // tags for categorization (e.g., 'finance', 'tech', 'health', 'new')
 };
 
 export type ApiKeys = {

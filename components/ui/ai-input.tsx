@@ -122,7 +122,7 @@ export default function AiInput() {
                 id="ai-input-04"
                 value={value}
                 placeholder=""
-                className="w-full rounded-2xl rounded-b-none px-4 py-3 bg-black/5 dark:bg-white/5 border-none dark:text-white resize-none focus-visible:ring-0 leading-[1.2]"
+                className="w-full rounded-2xl rounded-b-none px-4 py-3 bg-black/10 dark:bg-black/20 border-none dark:text-white resize-none focus-visible:ring-0 leading-[1.2]"
                 ref={textareaRef}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -143,11 +143,11 @@ export default function AiInput() {
             </div>
           </div>
 
-          <div className="h-12 bg-black/5 dark:bg-white/5 rounded-b-xl">
+          <div className="h-12 bg-black/10 dark:bg-black/20 rounded-b-xl">
             <div className="absolute left-3 bottom-3 flex items-center gap-2">
               <label
                 className={cn(
-                  'cursor-pointer relative rounded-full p-2 bg-black/5 dark:bg-white/5',
+                  'cursor-pointer relative rounded-full p-2 bg-black/10 dark:bg-black/20',
                   imagePreview ? 'accent-chip-active' : 'accent-chip',
                 )}
               >
@@ -250,7 +250,7 @@ export default function AiInput() {
                   'rounded-full p-2 transition-colors',
                   value
                     ? 'bg-[var(--accent-interactive-primary)] text-white hover:bg-[var(--accent-interactive-hover)] accent-glow-soft'
-                    : 'bg-black/5 dark:bg-white/5 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white',
+                    : 'bg-black/10 dark:bg-black/20 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white',
                 )}
               >
                 <Send className="w-4 h-4" />

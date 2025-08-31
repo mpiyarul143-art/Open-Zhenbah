@@ -32,7 +32,7 @@ type Props = {
   projects: Project[];
   activeProjectId: string | null;
   onSelectProject: (id: string | null) => void;
-  onCreateProject: (project: Project) => void;
+  onCreateProject: () => void;
   onUpdateProject: (project: Project) => void;
   onDeleteProject: (id: string) => void;
 };
@@ -164,19 +164,33 @@ export default function ThreadSidebar({
     <>
       {/* Desktop sidebar */}
       <aside
-        className={`relative hidden lg:flex shrink-0 h-[calc(100vh-2rem)] lg:h-[calc(100vh-3rem)] rounded-xl border border-white/10 backdrop-blur-xl bg-gradient-to-b from-black/40 via-black/30 to-black/20 shadow-2xl flex-col transition-[width] duration-300 ${sidebarOpen ? 'w-72' : 'w-16'
-          }`}
+        className={cn(
+          `relative hidden lg:flex shrink-0 h-[calc(100vh-2rem)] lg:h-[calc(100vh-3rem)] rounded-xl backdrop-blur-xl shadow-2xl flex-col transition-[width] duration-300`,
+          theme.mode === 'dark' 
+            ? 'border border-white/10 bg-gradient-to-b from-black/40 via-black/30 to-black/20'
+            : 'border border-white/30 bg-gradient-to-b from-white/60 via-white/40 to-white/20',
+          sidebarOpen ? 'w-72' : 'w-16'
+        )}
       >
         {/* Collapse/Expand toggle */}
         <button
           aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
           onClick={onToggleSidebar}
-          className="absolute -right-3 top-6 z-10 h-7 w-7 rounded-full bg-gradient-to-r from-white/15 to-white/10 border border-white/20 backdrop-blur-sm flex items-center justify-center hover:from-white/25 hover:to-white/15 hover:border-white/30 transition-all duration-200 shadow-lg"
+          className={cn(
+            "absolute -right-3 top-6 z-10 h-7 w-7 rounded-full backdrop-blur-sm flex items-center justify-center transition-all duration-200 shadow-lg",
+            theme.mode === 'dark'
+              ? "bg-gradient-to-r from-white/15 to-white/10 border border-white/20 hover:from-white/25 hover:to-white/15 hover:border-white/30"
+              : "bg-gradient-to-r from-white/40 to-white/30 border border-white/40 hover:from-white/50 hover:to-white/40 hover:border-white/50"
+          )}
         >
-          {sidebarOpen ? <ChevronLeft size={16} className="text-white/90" /> : <ChevronRight size={16} className="text-white/90" />}
+          {sidebarOpen ? (
+            <ChevronLeft size={16} className={theme.mode === 'dark' ? "text-white/90" : "text-gray-700"} />
+          ) : (
+            <ChevronRight size={16} className={theme.mode === 'dark' ? "text-white/90" : "text-gray-700"} />
+          )}
         </button>
 
-        {sidebarOpen && <div
+        <div
           className={`flex items-center justify-between p-4 ${sidebarOpen ? '' : 'opacity-0 pointer-events-none'
             }`}
         >
@@ -185,31 +199,37 @@ export default function ThreadSidebar({
               <div className="w-4 h-4 rounded-full bg-gradient-to-r from-red-500 to-red-600 shadow-lg" />
               <div className="absolute inset-0 w-4 h-4 rounded-full bg-gradient-to-r from-red-500 to-red-600 animate-ping opacity-30" />
             </div>
-            <h2 className="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">Open Fiesta</h2>
-          </div>
-        </div>}
-        {/* Credits link under title */}
-        {sidebarOpen && (
-          <div className="mb-4 px-4">
+            {/* Replace title with Made by Niladri badge */}
             <a
               href="https://x.com/byteHumi"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-3 rounded-lg xl:rounded-xl px-3 py-2 bg-gradient-to-r from-white/8 to-white/4 border border-white/15 shadow-sm hover:border-white/25 hover:from-white/12 hover:to-white/6 hover:shadow-md transition-all duration-200 backdrop-blur-sm"
+              className={cn(
+                "inline-flex items-center gap-3 rounded-lg xl:rounded-xl px-3 py-2 shadow-sm hover:shadow-md transition-all duration-200 backdrop-blur-sm",
+                theme.mode === 'dark'
+                  ? "bg-gradient-to-r from-white/8 to-white/4 border border-white/15 hover:border-white/25 hover:from-white/12 hover:to-white/6"
+                  : "bg-gradient-to-r from-white/30 to-white/20 border border-white/40 hover:border-white/50 hover:from-white/40 hover:to-white/30"
+              )}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/image.png"
                 alt="Niladri"
-                className="h-5 w-5 xl:h-7 xl:w-7 rounded-full ring-2 ring-white/20 object-cover shadow-sm"
+                className={cn(
+                  "h-5 w-5 xl:h-7 xl:w-7 rounded-full object-cover shadow-sm",
+                  theme.mode === 'dark' ? "ring-2 ring-white/20" : "ring-2 ring-gray-300/50"
+                )}
               />
-              <span className="text-xs xl:text-sm text-white/90">
+              <span className={cn(
+                "text-xs xl:text-sm",
+                theme.mode === 'dark' ? "text-white/90" : "text-gray-700"
+              )}>
                 <span className="font-medium">Made by</span>
                 <span className="font-bold ml-1">Niladri</span>
               </span>
             </a>
           </div>
-        )}
+        </div>
 
         {/* Collapsed state - show image at the top */}
         {!sidebarOpen && (
@@ -237,27 +257,42 @@ export default function ThreadSidebar({
                 />
               </div>
 
-              {/* Search Bar */}
-              <div className="mb-3 xl:mb-6 px-4">
-                <div className="relative group">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/50 group-focus-within:text-white/70 transition-colors" />
-                  <input
-                    type="text"
-                    placeholder="Search threads..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-12 pr-10 py-2 xl:py-3 bg-white/8 border border-white/15 rounded-lg xl:rounded-xl text-sm text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30 focus:bg-white/12 transition-all duration-200 backdrop-blur-sm"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white/80 transition-colors p-1 rounded-md hover:bg-white/10"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
+            {/* Search Bar */}
+            <div className="mb-3 xl:mb-6 px-4">
+              <div className="relative group">
+                <Search className={cn(
+                  "absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 transition-colors",
+                  theme.mode === 'dark' 
+                    ? "text-white/50 group-focus-within:text-white/70" 
+                    : "text-gray-500 group-focus-within:text-gray-700"
+                )} />
+                <input
+                  type="text"
+                  placeholder="Search threads..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={cn(
+                    "w-full pl-12 pr-10 py-2 xl:py-3 rounded-lg xl:rounded-xl text-sm focus:outline-none focus:ring-2 transition-all duration-200 backdrop-blur-sm",
+                    theme.mode === 'dark'
+                      ? "bg-black/20 border border-white/20 text-white placeholder-white/60 focus:ring-red-500/30 focus:border-red-500/50 focus:bg-black/30 shadow-lg"
+                      : "bg-white/30 border border-white/40 text-gray-700 placeholder-gray-500 focus:ring-white/30 focus:border-white/50 focus:bg-white/40"
                   )}
-                </div>
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className={cn(
+                      "absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors p-1 rounded-md",
+                      theme.mode === 'dark'
+                        ? "text-white/50 hover:text-white/80 hover:bg-white/10"
+                        : "text-gray-500 hover:text-gray-700 hover:bg-white/20"
+                    )}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
+            </div>
 
               {/* New Chat */}
               <div className="mb-4 px-4">
@@ -292,103 +327,112 @@ export default function ThreadSidebar({
                   <div className="text-xs opacity-60 text-center py-4">No threads found</div>
                 ) : null}
 
-                {isHydrated && (
-                  <>
-                    {/* Today */}
-                    {groupedThreads.today.length > 0 && (
-                      <div className="mb-4">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-white/60 mb-3 px-2">Today</div>
-                        <div className="space-y-1">
-                          {groupedThreads.today.map((t) => (
-                            <ThreadItem
-                              key={t.id}
-                              thread={t}
-                              isActive={t.id === activeId}
-                              onSelect={() => {
-                                if (t.pageType === 'compare') {
-                                  window.location.href = '/compare';
-                                } else {
-                                  handleThreadSelect(t.id);
-                                }
-                              }}
-                              onMenuToggle={(id) => setOpenMenuId(prev => prev === id ? null : id)}
-                              isMenuOpen={openMenuId === t.id}
-                              onDelete={(id) => {
-                                setOpenMenuId(null);
-                                setConfirmDeleteId(id);
-                              }}
-                              projects={projects}
-                              selectedModels={selectedModels}
-                            />
-                          ))}
-                        </div>
+              {isHydrated && (
+                <>
+                  {/* Today */}
+                  {groupedThreads.today.length > 0 && (
+                    <div className="mb-4">
+                      <div className={cn(
+                        "text-xs font-semibold uppercase tracking-wider mb-3 px-2",
+                        theme.mode === 'dark' ? "text-white/60" : "text-gray-700/80"
+                      )}>Today</div>
+                      <div className="space-y-1">
+                        {groupedThreads.today.map((t) => (
+                          <ThreadItem
+                            key={t.id}
+                            thread={t}
+                            isActive={t.id === activeId}
+                            onSelect={() => {
+                              if (t.pageType === 'compare') {
+                                window.location.href = '/compare';
+                              } else {
+                                handleThreadSelect(t.id);
+                              }
+                            }}
+                            onMenuToggle={(id) => setOpenMenuId(prev => prev === id ? null : id)}
+                            isMenuOpen={openMenuId === t.id}
+                            onDelete={(id) => {
+                              setOpenMenuId(null);
+                              setConfirmDeleteId(id);
+                            }}
+                            projects={projects}
+                            selectedModels={selectedModels}
+                          />
+                        ))}
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* Yesterday */}
-                    {groupedThreads.yesterday.length > 0 && (
-                      <div className="mb-4">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-white/60 mb-3 px-2">Yesterday</div>
-                        <div className="space-y-1">
-                          {groupedThreads.yesterday.map((t) => (
-                            <ThreadItem
-                              key={t.id}
-                              thread={t}
-                              isActive={t.id === activeId}
-                              onSelect={() => {
-                                if (t.pageType === 'compare') {
-                                  window.location.href = '/compare';
-                                } else {
-                                  handleThreadSelect(t.id);
-                                }
-                              }}
-                              onMenuToggle={(id) => setOpenMenuId(prev => prev === id ? null : id)}
-                              isMenuOpen={openMenuId === t.id}
-                              onDelete={(id) => {
-                                setOpenMenuId(null);
-                                setConfirmDeleteId(id);
-                              }}
-                              projects={projects}
-                              selectedModels={selectedModels}
-                            />
-                          ))}
-                        </div>
+                  {/* Yesterday */}
+                  {groupedThreads.yesterday.length > 0 && (
+                    <div className="mb-4">
+                      <div className={cn(
+                        "text-xs font-semibold uppercase tracking-wider mb-3 px-2",
+                        theme.mode === 'dark' ? "text-white/60" : "text-gray-700/80"
+                      )}>Yesterday</div>
+                      <div className="space-y-1">
+                        {groupedThreads.yesterday.map((t) => (
+                          <ThreadItem
+                            key={t.id}
+                            thread={t}
+                            isActive={t.id === activeId}
+                            onSelect={() => {
+                              if (t.pageType === 'compare') {
+                                window.location.href = '/compare';
+                              } else {
+                                handleThreadSelect(t.id);
+                              }
+                            }}
+                            onMenuToggle={(id) => setOpenMenuId(prev => prev === id ? null : id)}
+                            isMenuOpen={openMenuId === t.id}
+                            onDelete={(id) => {
+                              setOpenMenuId(null);
+                              setConfirmDeleteId(id);
+                            }}
+                            projects={projects}
+                            selectedModels={selectedModels}
+                          />
+                        ))}
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* Older */}
-                    {groupedThreads.older.length > 0 && (
-                      <div className="mb-4">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-white/60 mb-3 px-2">Older</div>
-                        <div className="space-y-1">
-                          {groupedThreads.older.map((t) => (
-                            <ThreadItem
-                              key={t.id}
-                              thread={t}
-                              isActive={t.id === activeId}
-                              onSelect={() => {
-                                if (t.pageType === 'compare') {
-                                  window.location.href = '/compare';
-                                } else {
-                                  handleThreadSelect(t.id);
-                                }
-                              }}
-                              onMenuToggle={(id) => setOpenMenuId(prev => prev === id ? null : id)}
-                              isMenuOpen={openMenuId === t.id}
-                              onDelete={(id) => {
-                                setOpenMenuId(null);
-                                setConfirmDeleteId(id);
-                              }}
-                              projects={projects}
-                              selectedModels={selectedModels}
-                            />
-                          ))}
-                        </div>
+                  {/* Older */}
+                  {groupedThreads.older.length > 0 && (
+                    <div className="mb-4">
+                      <div className={cn(
+                        "text-xs font-semibold uppercase tracking-wider mb-3 px-2",
+                        theme.mode === 'dark' ? "text-white/60" : "text-gray-700/80"
+                      )}>Older</div>
+                      <div className="space-y-1">
+                        {groupedThreads.older.map((t) => (
+                          <ThreadItem
+                            key={t.id}
+                            thread={t}
+                            isActive={t.id === activeId}
+                            onSelect={() => {
+                              if (t.pageType === 'compare') {
+                                window.location.href = '/compare';
+                              } else {
+                                handleThreadSelect(t.id);
+                              }
+                            }}
+                            onMenuToggle={(id) => setOpenMenuId(prev => prev === id ? null : id)}
+                            isMenuOpen={openMenuId === t.id}
+                            onDelete={(id) => {
+                              setOpenMenuId(null);
+                              setConfirmDeleteId(id);
+                            }}
+                            projects={projects}
+                            selectedModels={selectedModels}
+                          />
+                        ))}
                       </div>
-                    )}
-                  </>
-                )}
-              </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
 
 
             </div>
@@ -466,21 +510,59 @@ export default function ThreadSidebar({
       {mobileSidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/60" onClick={onCloseMobile} />
-          <div className="absolute left-0 top-0 h-full w-80 max-w-[85vw] rounded-r-xl border border-white/10 p-4 backdrop-blur-xl bg-gradient-to-b from-black/40 via-black/30 to-black/20 shadow-2xl">
+          <div className={cn(
+            "absolute left-0 top-0 h-full w-80 max-w-[85vw] rounded-r-xl border p-4 backdrop-blur-xl shadow-2xl",
+            theme.mode === 'dark'
+              ? "border-white/10 bg-gradient-to-b from-black/40 via-black/30 to-black/20"
+              : "border-white/30 bg-gradient-to-b from-white/60 via-white/40 to-white/20"
+          )}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <div className="w-4 h-4 rounded-full bg-gradient-to-r from-red-500 to-red-600 shadow-lg" />
                   <div className="absolute inset-0 w-4 h-4 rounded-full bg-gradient-to-r from-red-500 to-red-600 animate-ping opacity-30" />
                 </div>
-                <h2 className="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">Open Fiesta</h2>
+                {/* Replace title with Made by Niladri badge */}
+                <a
+                  href="https://x.com/byteHumi"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "inline-flex items-center gap-3 rounded-xl px-3 py-2 shadow-sm hover:shadow-md transition-all duration-200 backdrop-blur-sm",
+                    theme.mode === 'dark'
+                      ? "bg-gradient-to-r from-white/8 to-white/4 border border-white/15 hover:border-white/25 hover:from-white/12 hover:to-white/6"
+                      : "bg-gradient-to-r from-white/30 to-white/20 border border-white/40 hover:border-white/50 hover:from-white/40 hover:to-white/30"
+                  )}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/image.png"
+                    alt="Niladri"
+                    className={cn(
+                      "h-7 w-7 rounded-full object-cover shadow-sm",
+                      theme.mode === 'dark' ? "ring-2 ring-white/20" : "ring-2 ring-gray-300/50"
+                    )}
+                  />
+                  <span className={cn(
+                    "text-sm",
+                    theme.mode === 'dark' ? "text-white/90" : "text-gray-700"
+                  )}>
+                    <span className="font-medium">Made by</span>
+                    <span className="font-bold ml-1">Niladri</span>
+                  </span>
+                </a>
               </div>
               <button
                 aria-label="Close"
                 onClick={onCloseMobile}
-                className="h-7 w-7 rounded-full bg-gradient-to-r from-white/15 to-white/10 border border-white/20 backdrop-blur-sm flex items-center justify-center hover:from-white/25 hover:to-white/15 hover:border-white/30 transition-all duration-200 shadow-lg"
+                className={cn(
+                  "h-7 w-7 rounded-full backdrop-blur-sm flex items-center justify-center transition-all duration-200 shadow-lg",
+                  theme.mode === 'dark'
+                    ? "bg-gradient-to-r from-white/15 to-white/10 border border-white/20 hover:from-white/25 hover:to-white/15 hover:border-white/30"
+                    : "bg-gradient-to-r from-white/40 to-white/30 border border-white/40 hover:from-white/50 hover:to-white/40 hover:border-white/50"
+                )}
               >
-                <X size={14} className="text-white/90" />
+                <X size={14} className={theme.mode === 'dark' ? "text-white/90" : "text-gray-700"} />
               </button>
             </div>
 
@@ -490,180 +572,220 @@ export default function ThreadSidebar({
                 href="https://x.com/byteHumi"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 rounded-lg px-3 py-2 bg-gradient-to-r from-white/8 to-white/4 border border-white/15 shadow-sm hover:border-white/25 hover:from-white/12 hover:to-white/6 hover:shadow-md transition-all duration-200 backdrop-blur-sm"
+                className={cn(
+                  "inline-flex items-center gap-3 rounded-xl px-3 py-2 shadow-sm hover:shadow-md transition-all duration-200 backdrop-blur-sm",
+                  theme.mode === 'dark'
+                    ? "bg-gradient-to-r from-white/8 to-white/4 border border-white/15 hover:border-white/25 hover:from-white/12 hover:to-white/6"
+                    : "bg-gradient-to-r from-white/30 to-white/20 border border-white/40 hover:border-white/50 hover:from-white/40 hover:to-white/30"
+                )}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/image.png"
                   alt="Niladri"
-                  className="h-5 w-5 xl:h-7 xl:w-7 rounded-full ring-2 ring-white/20 object-cover shadow-sm"
+                  className={cn(
+                    "h-5 w-5 xl:h-7 xl:w-7 rounded-full object-cover shadow-sm",
+                    theme.mode === 'dark' ? "ring-2 ring-white/20" : "ring-2 ring-gray-300/50"
+                  )}
                 />
-                <span className="text-xs xl:text-sm text-white/90">
+                <span className={cn(
+                  "text-xs xl:text-sm",
+                  theme.mode === 'dark' ? "text-white/90" : "text-gray-700"
+                )}>
                   <span className="font-medium">Made by</span>
                   <span className="font-bold ml-1">Niladri</span>
                 </span>
               </a>
             </div>
             <div className="flex-1 flex flex-col max-h-[76vh] overflow-y-auto">
-              <div className="mb-4">
-                <ProjectsSection
-                  projects={projects}
-                  activeProjectId={activeProjectId}
-                  onSelectProject={(id) => {
-                    if (id) {
-                      onSelectProject(id);
-                    }
-                  }}
-                  onCreateProject={onCreateProject}
-                  onUpdateProject={onUpdateProject}
-                  onDeleteProject={onDeleteProject}
-                  collapsed={false}
-                />
-              </div>
-              {/* Search Bar (Mobile) */}
-              <div className="mb-4">
-                <div className="relative group">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/50 group-focus-within:text-white/70 transition-colors" />
-                  <input
-                    type="text"
-                    placeholder="Search threads..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-12 pr-10 py-2 bg-white/8 border border-white/15 rounded-md text-xs text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30 focus:bg-white/12 transition-all duration-200 backdrop-blur-sm"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white/80 transition-colors p-1 rounded-md hover:bg-white/10"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
+            <div className="mb-4">
+              <ProjectsSection
+                projects={projects}
+                activeProjectId={activeProjectId}
+                onSelectProject={(id) => {
+                  if (id) {
+                    onSelectProject(id);
+                  }
+                }}
+                onCreateProject={onCreateProject}
+                onUpdateProject={onUpdateProject}
+                onDeleteProject={onDeleteProject}
+                collapsed={false}
+              />
+            </div>
+
+            {/* Search Bar (Mobile) */}
+            <div className="mb-4">
+              <div className="relative group">
+                <Search className={cn(
+                  "absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 transition-colors",
+                  theme.mode === 'dark' 
+                    ? "text-white/50 group-focus-within:text-white/70" 
+                    : "text-gray-500 group-focus-within:text-gray-700"
+                )} />
+                <input
+                  type="text"
+                  placeholder="Search threads..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={cn(
+                    "w-full pl-12 pr-10 py-2 rounded-md text-xs focus:outline-none focus:ring-2 transition-all duration-200 backdrop-blur-sm",
+                    theme.mode === 'dark'
+                      ? "bg-black/20 border border-white/20 text-white placeholder-white/60 focus:ring-red-500/30 focus:border-red-500/50 focus:bg-black/30 shadow-lg"
+                      : "bg-white/30 border border-white/40 text-gray-700 placeholder-gray-500 focus:ring-white/30 focus:border-white/50 focus:bg-white/40"
                   )}
-                </div>
-              </div>
-              <div className="mb-4">
-                <button
-                  onClick={() => {
-                    handleNewChat();
-                    onCloseMobile();
-                  }}
-                  className="w-full text-sm font-semibold px-4 py-2 xl:py-3 rounded-md xl:rounded-xl shadow-lg text-white bg-gradient-to-r hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] border border-white/20"
-                  style={{ backgroundImage: `linear-gradient(135deg, ${accent.primary}, ${accent.primary}dd)` }}
-                >
-                  <Plus className="inline-block w-4 h-4 mr-2" />
-                  New Chat
-                </button>
-              </div>
-
-              <div className="h-[65vh] space-y-2 pr-1">
-                {threads.length === 0 ? (
-                  <div className="text-xs opacity-60">No chats yet</div>
-                ) : searchQuery && Object.values(groupedThreads).every(group => group.length === 0) ? (
-                  <div className="text-xs opacity-60 text-center py-4">No threads found</div>
-                ) : (
-                  <>
-                    {/* Today */}
-                    {groupedThreads.today.length > 0 && (
-                      <div className="mb-3">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-white/60 mb-3 px-2">Today</div>
-                        <div className="space-y-2">
-                          {groupedThreads.today.map((t) => (
-                            <ThreadItem
-                              key={t.id}
-                              thread={t}
-                              isActive={t.id === activeId}
-                              onSelect={() => {
-                                if (t.pageType === 'compare') {
-                                  window.location.href = '/compare';
-                                } else {
-                                  handleThreadSelect(t.id);
-                                }
-                                onCloseMobile();
-                              }}
-                              onMenuToggle={(id) => setOpenMenuId(prev => prev === id ? null : id)}
-                              isMenuOpen={openMenuId === t.id}
-                              onDelete={(id) => {
-                                setOpenMenuId(null);
-                                setConfirmDeleteId(id);
-                              }}
-                              projects={projects}
-                              selectedModels={selectedModels}
-                            />
-                          ))}
-                        </div>
-                      </div>
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className={cn(
+                      "absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors p-1 rounded-md",
+                      theme.mode === 'dark'
+                        ? "text-white/50 hover:text-white/80 hover:bg-white/10"
+                        : "text-gray-500 hover:text-gray-700 hover:bg-white/20"
                     )}
-
-                    {/* Yesterday */}
-                    {groupedThreads.yesterday.length > 0 && (
-                      <div className="mb-3">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-white/60 mb-3 px-2">Yesterday</div>
-                        <div className="space-y-2">
-                          {groupedThreads.yesterday.map((t) => (
-                            <ThreadItem
-                              key={t.id}
-                              thread={t}
-                              isActive={t.id === activeId}
-                              onSelect={() => {
-                                if (t.pageType === 'compare') {
-                                  window.location.href = '/compare';
-                                } else {
-                                  handleThreadSelect(t.id);
-                                }
-                                onCloseMobile();
-                              }}
-                              onMenuToggle={(id) => setOpenMenuId(prev => prev === id ? null : id)}
-                              isMenuOpen={openMenuId === t.id}
-                              onDelete={(id) => {
-                                setOpenMenuId(null);
-                                setConfirmDeleteId(id);
-                              }}
-                              projects={projects}
-                              selectedModels={selectedModels}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Older */}
-                    {groupedThreads.older.length > 0 && (
-                      <div className="mb-3">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-white/60 mb-3 px-2">Older</div>
-                        <div className="space-y-2">
-                          {groupedThreads.older.map((t) => (
-                            <ThreadItem
-                              key={t.id}
-                              thread={t}
-                              isActive={t.id === activeId}
-                              onSelect={() => {
-                                if (t.pageType === 'compare') {
-                                  window.location.href = '/compare';
-                                } else {
-                                  handleThreadSelect(t.id);
-                                }
-                                onCloseMobile();
-                              }}
-                              onMenuToggle={(id) => setOpenMenuId(prev => prev === id ? null : id)}
-                              isMenuOpen={openMenuId === t.id}
-                              onDelete={(id) => {
-                                setOpenMenuId(null);
-                                setConfirmDeleteId(id);
-                              }}
-                              projects={projects}
-                              selectedModels={selectedModels}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 )}
               </div>
             </div>
 
+            <div className="mb-6">
+              <button
+                onClick={() => {
+                  handleNewChat();
+                  onCloseMobile();
+                }}
+                className="w-full text-sm font-semibold px-4 py-2 xl:py-3 rounded-md xl:rounded-xl shadow-lg text-white bg-gradient-to-r hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] border border-white/20"
+                style={{ backgroundImage: `linear-gradient(135deg, ${accent.primary}, ${accent.primary}dd)` }}
+              >
+                <Plus className="inline-block w-4 h-4 mr-2" />
+                New Chat
+              </button>
+            </div>
+
+            <div className="h-[65vh] space-y-2 pr-1">
+              {threads.length === 0 ? (
+                <div className="text-xs opacity-60">No chats yet</div>
+              ) : searchQuery && Object.values(groupedThreads).every(group => group.length === 0) ? (
+                <div className="text-xs opacity-60 text-center py-4">No threads found</div>
+              ) : (
+                <>
+                  {/* Today */}
+                  {groupedThreads.today.length > 0 && (
+                    <div className="mb-3">
+                      <div className={cn(
+                        "text-xs font-semibold uppercase tracking-wider mb-3 px-2",
+                        theme.mode === 'dark' ? "text-white/60" : "text-gray-700/80"
+                      )}>Today</div>
+                      <div className="space-y-2">
+                        {groupedThreads.today.map((t) => (
+                          <ThreadItem
+                            key={t.id}
+                            thread={t}
+                            isActive={t.id === activeId}
+                            onSelect={() => {
+                              if (t.pageType === 'compare') {
+                                window.location.href = '/compare';
+                              } else {
+                                handleThreadSelect(t.id);
+                              }
+                              onCloseMobile();
+                            }}
+                            onMenuToggle={(id) => setOpenMenuId(prev => prev === id ? null : id)}
+                            isMenuOpen={openMenuId === t.id}
+                            onDelete={(id) => {
+                              setOpenMenuId(null);
+                              setConfirmDeleteId(id);
+                            }}
+                            projects={projects}
+                            selectedModels={selectedModels}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Yesterday */}
+                  {groupedThreads.yesterday.length > 0 && (
+                    <div className="mb-3">
+                      <div className={cn(
+                        "text-xs font-semibold uppercase tracking-wider mb-3 px-2",
+                        theme.mode === 'dark' ? "text-white/60" : "text-gray-700/80"
+                      )}>Yesterday</div>
+                      <div className="space-y-2">
+                        {groupedThreads.yesterday.map((t) => (
+                          <ThreadItem
+                            key={t.id}
+                            thread={t}
+                            isActive={t.id === activeId}
+                            onSelect={() => {
+                              if (t.pageType === 'compare') {
+                                window.location.href = '/compare';
+                              } else {
+                                handleThreadSelect(t.id);
+                              }
+                              onCloseMobile();
+                            }}
+                            onMenuToggle={(id) => setOpenMenuId(prev => prev === id ? null : id)}
+                            isMenuOpen={openMenuId === t.id}
+                            onDelete={(id) => {
+                              setOpenMenuId(null);
+                              setConfirmDeleteId(id);
+                            }}
+                            projects={projects}
+                            selectedModels={selectedModels}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Older */}
+                  {groupedThreads.older.length > 0 && (
+                    <div className="mb-3">
+                      <div className={cn(
+                        "text-xs font-semibold uppercase tracking-wider mb-3 px-2",
+                        theme.mode === 'dark' ? "text-white/60" : "text-gray-700/80"
+                      )}>Older</div>
+                      <div className="space-y-2">
+                        {groupedThreads.older.map((t) => (
+                          <ThreadItem
+                            key={t.id}
+                            thread={t}
+                            isActive={t.id === activeId}
+                            onSelect={() => {
+                              if (t.pageType === 'compare') {
+                                window.location.href = '/compare';
+                              } else {
+                                handleThreadSelect(t.id);
+                              }
+                              onCloseMobile();
+                            }}
+                            onMenuToggle={(id) => setOpenMenuId(prev => prev === id ? null : id)}
+                            isMenuOpen={openMenuId === t.id}
+                            onDelete={(id) => {
+                              setOpenMenuId(null);
+                              setConfirmDeleteId(id);
+                            }}
+                            projects={projects}
+                            selectedModels={selectedModels}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+              </div>
+            </div>
+
             {/* Footer: Auth / User info (mobile) */}
-            <div className="absolute bg-black left-0 bottom-0 w-80 max-w-[85vw] p-4 border-t border-white/10">
+            <div className={cn(
+              "absolute bg-black left-0 bottom-0 w-80 max-w-[85vw] p-4 border-t",
+              theme.mode === 'dark' ? "border-white/10" : "border-gray-300/40"
+            )}>
               <AuthButton />
             </div>
           </div>
@@ -712,7 +834,7 @@ export function SimpleThreadSidebar({ isDark, sidebarOpen, onClose, onNewChat }:
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-inherit rounded-tr-2xl">
-        <h1 className={cn('text-xl font-semibold', isDark ? 'text-white' : 'text-gray-800')}>Open Fiesta</h1>
+        <h1 className={cn('text-xl font-semibold', isDark ? 'text-white' : 'text-gray-800')}>Made by Niladri</h1>
         <Button
           variant="ghost"
           size="sm"

@@ -8,6 +8,7 @@ import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognitio
 
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
+import { useTheme } from '@/lib/themeContext';
 
 interface UseAutoResizeTextareaProps {
   minHeight: number;
@@ -57,7 +58,7 @@ function useAutoResizeTextarea({ minHeight, maxHeight }: UseAutoResizeTextareaPr
 const MIN_HEIGHT = 58;
 const MAX_HEIGHT = 197;
 
-const AnimatedPlaceholder = ({ showSearch }: { showSearch: boolean }) => (
+const AnimatedPlaceholder = ({ showSearch, isDark }: { showSearch: boolean; isDark: boolean }) => (
   <AnimatePresence mode="wait">
     <motion.p
       key={showSearch ? 'search' : 'ask'}
@@ -65,21 +66,48 @@ const AnimatedPlaceholder = ({ showSearch }: { showSearch: boolean }) => (
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -5 }}
       transition={{ duration: 0.1 }}
-      className="pointer-events-none w-[150px] text-sm absolute text-white/30 sm:dark:text-white/70 drop-shadow-sm"
+      className={cn(
+        "pointer-events-none w-[150px] text-sm absolute drop-shadow-sm",
+        isDark ? "text-white/70" : "text-gray-600/70"
+      )}
     >
-      {showSearch ? 'Search the web...' : 'Ask Anything...'}
+      {showSearch ? 'Ask Anything...' : 'Ask Anything...'}
     </motion.p>
   </AnimatePresence>
 );
 
-export function AiInput({
-  onSubmit,
-  loading = false,
-}: {
+interface AIChatBoxProps {
+  value: string;
+  setValue: (value: string) => void;
   onSubmit: (text: string, imageDataUrl?: string, webSearch?: boolean) => void;
   loading?: boolean;
-}) {
-  const [value, setValue] = useState('');
+  errorMsg?: string | null;
+  showSearch?: boolean;
+  onToggleSearch: () => void;
+  onEnhancePrompt: () => void;
+}
+
+export default function AIChatBox({
+  value,
+  setValue,
+  onSubmit,
+  loading = false,
+  errorMsg,
+  showSearch = false,
+  onToggleSearch,
+  onEnhancePrompt,
+}: AIChatBoxProps) {
+  const { theme } = useTheme();
+  const isDark = theme.mode === 'dark';
+
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [barVisible, setBarVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const [localErrorMsg, setLocalErrorMsg] = useState<string | null>(null);
+
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: MIN_HEIGHT,
     maxHeight: MAX_HEIGHT,
@@ -100,7 +128,7 @@ export function AiInput({
       setValue(transcript);
       adjustHeight();
     }
-  }, [transcript, adjustHeight]);
+  }, [transcript, setValue, adjustHeight]);
 
   const startListening = () => {
     if (!browserSupportsSpeechRecognition) {
@@ -122,15 +150,11 @@ export function AiInput({
     SpeechRecognition.stopListening();
   };
 
-  // Prompt enhancement state
-  const [isEnhancing, setIsEnhancing] = useState(false);
-
   const enhancePrompt = async () => {
     if (!value.trim() || isEnhancing) return;
 
     // Stop listening if mic is active
     if (listening) {
-      // Small delay to ensure transcript is captured
       setTimeout(() => stopListening(), 100);
     }
 
@@ -156,19 +180,11 @@ export function AiInput({
       }
     } catch (error) {
       console.error('Error enhancing prompt:', error);
-      // Show a user-friendly error message
       alert(`Failed to enhance prompt: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsEnhancing(false);
     }
   };
-  const [showSearch, setShowSearch] = useState(true);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [attachedFile, setAttachedFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [barVisible, setBarVisible] = useState(true);
-  const lastScrollY = useRef(0);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handelClose = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -194,8 +210,8 @@ export function AiInput({
     ];
     const isAllowed = allowed.some((re) => re.test(file.type));
     if (!isAllowed) {
-      setErrorMsg('Unsupported file. Allowed: Images, TXT, PDF, DOC, DOCX.');
-      setTimeout(() => setErrorMsg(null), 4000);
+      setLocalErrorMsg('Unsupported file. Allowed: Images, TXT, PDF, DOC, DOCX.');
+      setTimeout(() => setLocalErrorMsg(null), 4000);
       if (fileInputRef.current) fileInputRef.current.value = ''; // reset so same file can be selected later
       return;
     }
@@ -263,8 +279,14 @@ export function AiInput({
       animate={{ y: barVisible ? 0 : 72, opacity: barVisible ? 1 : 0.9 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
-      <div className="relative max-w-xl border rounded-[22px] border-black/5 dark:border-white/5 p-1 w-full mx-auto chat-input-shell">
-        <div className="relative rounded-2xl border border-black/5 dark:border-white/5 overflow-hidden">
+      <div className={cn(
+        "relative max-w-xl border rounded-[22px] p-1 w-full mx-auto chat-input-shell",
+        isDark ? "border-white/5" : "border-black/5"
+      )}>
+        <div className={cn(
+          "relative rounded-2xl border overflow-hidden",
+          isDark ? "border-white/5" : "border-black/5"
+        )}>
           <div
             className="ai-grow-area"
             style={{ '--ai-input-max': `${MAX_HEIGHT}px` } as React.CSSProperties}
@@ -310,7 +332,7 @@ export function AiInput({
                     />
                     {!value && (
                       <div className="absolute left-4 top-3">
-                        <AnimatedPlaceholder showSearch={showSearch} />
+                        <AnimatedPlaceholder showSearch={showSearch} isDark={isDark} />
                       </div>
                     )}
                   </div>
@@ -336,14 +358,19 @@ export function AiInput({
                   />
                   {!value && (
                     <div className="absolute left-4 top-3">
-                      <AnimatedPlaceholder showSearch={showSearch} />
+                      <AnimatedPlaceholder showSearch={showSearch} isDark={isDark} />
                     </div>
                   )}
                 </div>
               )}
-              {errorMsg && (
-                <div className="px-4 py-2 text-[13px] text-rose-700 dark:text-rose-200 bg-rose-500/10 border-t border-black/10 dark:border-white/10">
-                  {errorMsg}
+              {(errorMsg || localErrorMsg) && (
+                <div className={cn(
+                  "px-4 py-2 text-[13px] bg-rose-500/10 border-t",
+                  isDark 
+                    ? "text-rose-200 border-white/10" 
+                    : "text-rose-700 border-black/10"
+                )}>
+                  {errorMsg || localErrorMsg}
                 </div>
               )}
 
@@ -404,7 +431,7 @@ export function AiInput({
               </label>
               <button
                 type="button"
-                onClick={() => setShowSearch(!showSearch)}
+                onClick={() => onToggleSearch && onToggleSearch()}
                 className={cn(
                   'rounded-full transition-all flex items-center gap-1.5 px-1.5 py-1 h-7 search-toggle',
                 )}

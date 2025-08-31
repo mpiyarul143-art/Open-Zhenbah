@@ -15,8 +15,10 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import MarkdownLite from './MarkdownLite';
 import { CopyToClipboard } from '../ui/CopyToClipboard';
-import { estimateTokens, sanitizeContent } from '@/lib/utils';
+import { estimateTokens, sanitizeContent, cn } from '@/lib/utils';
 import ModelSelector from '../selectors/ModelSelector';
+import { useTheme } from '@/lib/themeContext';
+import ExpandedChatModal from '../modals/ExpandedChatModal';
 
 export type ChatGridProps = {
   selectedModels: AiModel[];
@@ -41,13 +43,33 @@ export default function ChatGrid({
   onDeleteUser,
   onToggle,
 }: ChatGridProps) {
+  const { theme } = useTheme();
+  const isDark = theme.mode === 'dark';
   const [pendingDelete, setPendingDelete] = useState<{ turnIndex: number } | null>(null);
-  const headerCols = useMemo(
-    () => headerTemplate || `repeat(${selectedModels.length}, 320px)`,
-    [headerTemplate, selectedModels.length],
-  );
+  // Compute grid columns dynamically so expanded model can take full width
+  const headerCols = useMemo(() => {
+    if (headerTemplate) return headerTemplate;
+    
+    const expandedCount = selectedModels.length - collapsedIds.length;
+    
+    // If only one model is expanded, give it all space, others get minimal
+    if (expandedCount === 1) {
+      const cols = selectedModels.map((m) =>
+        collapsedIds.includes(m.id) ? '60px' : 'minmax(0, 1fr)'
+      );
+      return cols.join(' ');
+    }
+    
+    // Otherwise, use responsive layout that fits container
+    return `repeat(${selectedModels.length}, minmax(280px, 1fr))`;
+  }, [headerTemplate, selectedModels, collapsedIds]);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [draft, setDraft] = useState<string>('');
+  const [expandedModal, setExpandedModal] = useState<{
+    model: AiModel;
+    response: ChatMessage;
+    userMessage: string;
+  } | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -63,17 +85,30 @@ export default function ChatGrid({
     <>
       <div
         ref={scrollRef}
-        className="relative rounded-lg border border-black/5 dark:border-white/5 bg-black/5 dark:bg-white/5 px-3 lg:px-4 pt-2 overflow-x-auto flex-1 overflow-y-auto pb-28 sm:scroll-stable-gutter"
+        className={cn(
+          "relative rounded-lg border px-3 lg:px-4 pt-2 overflow-x-auto flex-1 overflow-y-auto pb-28 sm:scroll-stable-gutter",
+          isDark 
+            ? "border-white/5 bg-white/5"
+            : "border-black/10 bg-black/5"
+        )}
       >
         {selectedModels.length === 0 ? (
-          <div className="p-4 text-zinc-500 dark:text-zinc-400">
+          <div className={cn(
+            "p-4",
+            isDark ? "text-zinc-400" : "text-zinc-600"
+          )}>
             Select up to 5 models to compare.
           </div>
         ) : (
-          <div className="min-w-full space-y-3">
+          <div className="w-full space-y-3">
             {/* Header row: model labels */}
             <div
-              className="grid min-w-full gap-3 items-center overflow-visible mt-0 sticky top-0 left-0 right-0 z-30 -mx-3 px-3 lg:-mx-4 lg:px-4 py-1 rounded-t-lg shadow-[0_1px_0_rgba(0,0,0,0.4)] bg-transparent border-0 sm:bg-black/40 dark:sm:bg-black/40 sm:backdrop-blur-sm sm:border-b sm:border-black/10 dark:sm:border-white/10"
+              className={cn(
+                "grid w-full gap-3 items-center overflow-visible mt-0 sticky top-0 left-0 right-0 z-30 -mx-3 px-3 lg:-mx-4 lg:px-4 py-1 rounded-t-lg shadow-[0_1px_0_rgba(0,0,0,0.4)] bg-transparent border-0 sm:backdrop-blur-sm sm:border-b",
+                isDark 
+                  ? "sm:bg-black/40 sm:border-white/10"
+                  : "sm:bg-white/40 sm:border-black/10"
+              )}
               style={{ gridTemplateColumns: headerCols }}
             >
               {selectedModels.map((m) => {
@@ -82,39 +117,55 @@ export default function ChatGrid({
                 return (
                   <div
                     key={m.id}
-                    className={`px-2.5 py-2 sm:px-2 sm:py-2 min-h-[42px] min-w-0 overflow-hidden flex items-center ${
-                      isCollapsed ? 'justify-center' : 'justify-between'
-                    } overflow-visible rounded-lg backdrop-blur-sm shadow-[0_1px_8px_rgba(0,0,0,0.25)] ring-1 ${
+                    className={cn(
+                      "px-2.5 py-2 sm:px-2 sm:py-2 min-h-[42px] min-w-0 flex items-center rounded-lg backdrop-blur-sm shadow-[0_1px_8px_rgba(0,0,0,0.25)] ring-1",
+                      isCollapsed ? 'justify-center' : 'justify-between',
                       m.good
-                        ? 'ring-amber-300/35 bg-gradient-to-b from-amber-500/10 to-black/50'
-                        : 'ring-white/10 bg-black/55'
-                    } dark:${
-                      m.good
-                        ? 'ring-amber-300/35 from-amber-400/10 to-black/60'
-                        : 'ring-white/10 bg-black/60'
-                    }`}
+                        ? isDark
+                          ? 'ring-amber-300/35 bg-gradient-to-b from-amber-400/10 to-black/60'
+                          : 'ring-amber-300/50 bg-gradient-to-b from-amber-100/60 to-white/40'
+                        : isDark
+                          ? 'ring-white/10 bg-black/60'
+                          : 'ring-white/30 bg-white/50'
+                    )}
                   >
                     {!isCollapsed && (
                       <div
-                        className={`text-[12px] leading-normal font-medium pr-2 inline-flex items-center gap-1.5 min-w-0 drop-shadow-[0_1px_0_rgba(0,0,0,0.35)] sm:drop-shadow-none ${
-                          m.good || isFree
-                            ? 'opacity-100 text-black dark:text-white'
-                            : 'opacity-100 text-black dark:text-white sm:opacity-90'
-                        }`}
+                        className={cn(
+                          "text-[12px] leading-normal font-medium pr-2 inline-flex items-center gap-1.5 min-w-0 drop-shadow-[0_1px_0_rgba(0,0,0,0.35)] sm:drop-shadow-none",
+                          isDark 
+                            ? "text-white"
+                            : "text-gray-800"
+                        )}
                       >
                         {m.good && (
-                          <span className="badge-base badge-pro inline-flex items-center gap-1 h-6 self-center">
+                          <span className={cn(
+                            "inline-flex items-center gap-1 h-6 self-center px-2 py-0.5 rounded-full text-[11px] font-medium",
+                            isDark 
+                              ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                              : "bg-amber-100 text-amber-700 border border-amber-300"
+                          )}>
                             <Star size={11} />
                             <span className="hidden sm:inline">Pro</span>
                           </span>
                         )}
                         {isFree && (
-                          <span className="badge-base badge-free inline-flex items-center gap-1 h-6 self-center">
+                          <span className={cn(
+                            "inline-flex items-center gap-1 h-6 self-center px-2 py-0.5 rounded-full text-[11px] font-medium",
+                            isDark 
+                              ? "bg-green-500/20 text-green-300 border border-green-500/30"
+                              : "bg-green-100 text-green-700 border border-green-300"
+                          )}>
                             <span className="hidden sm:inline">Free</span>
                           </span>
                         )}
                         <span
-                          className="truncate max-w-[18ch] px-2 py-0.5 rounded-full border border-white/10 bg-white/5 text-[12px]"
+                          className={cn(
+                            "truncate max-w-[18ch] px-2 py-0.5 rounded-full text-[12px]",
+                            isDark 
+                              ? "border border-white/10 bg-white/5"
+                              : "border border-gray-300/40 bg-white/20"
+                          )}
                           title={m.label}
                         >
                           {m.label}
@@ -125,13 +176,17 @@ export default function ChatGrid({
                       <button
                         key={m.id}
                         onClick={() => onToggle(m.id)}
-                        className={`icon-btn text-black dark:text-white cursor-pointer ${
+                        className={cn(
+                          "icon-btn cursor-pointer",
+                          isDark ? "text-white" : "text-gray-700",
                           m.good
                             ? 'model-chip-pro'
                             : isFree
                               ? 'model-chip-free'
-                              : 'border-black/10 dark:border-white/10'
-                        }`}
+                              : isDark 
+                                ? 'border-white/10'
+                                : 'border-gray-300/40'
+                        )}
                         data-selected={true}
                         data-type={m.good ? 'pro' : isFree ? 'free' : 'other'}
                         title="Click to toggle"
@@ -177,7 +232,12 @@ export default function ChatGrid({
                         <textarea
                           value={draft}
                           onChange={(e) => setDraft(e.target.value)}
-                          className="w-full min-h-[40px] max-w-[68ch] text-sm leading-relaxed px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/60 resize-none focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                          className={cn(
+                            "w-full min-h-[40px] max-w-[68ch] text-sm leading-relaxed px-3 py-1.5 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-rose-500/50",
+                            isDark 
+                              ? "bg-white/10 border border-white/20 text-white placeholder-white/60"
+                              : "bg-black/10 border border-black/20 text-gray-800 placeholder-gray-500"
+                          )}
                           placeholder="Edit your message..."
                           autoFocus
                           onKeyDown={(e) => {
@@ -212,7 +272,12 @@ export default function ChatGrid({
                               setEditingIdx(null);
                               setDraft('');
                             }}
-                            className="px-3 py-1 text-xs rounded bg-white/10 hover:bg-white/20 text-white transition-colors"
+                            className={cn(
+                              "px-3 py-1 text-xs rounded transition-colors",
+                              isDark 
+                                ? "bg-white/10 hover:bg-white/20 text-white"
+                                : "bg-black/10 hover:bg-black/20 text-gray-700"
+                            )}
                           >
                             Cancel
                           </button>
@@ -258,11 +323,13 @@ export default function ChatGrid({
                     return (
                       <div key={m.id} className="h-full">
                         <div
-                          className={`group relative rounded-lg ${
-                            isCollapsed ? 'p-2.5' : 'p-3'
-                          } h-full min-h-[140px] flex overflow-hidden ring-1 transition-shadow bg-gradient-to-b from-black/40 to-black/20 ring-white/10 backdrop-blur-[2px] ${
-                            isCollapsed ? 'cursor-pointer' : 'hover:ring-white/20'
-                          }`}
+                          className={cn(
+                            "group relative rounded-lg h-full min-h-[140px] flex ring-1 transition-shadow backdrop-blur-[2px]",
+                            isCollapsed ? 'p-2.5 cursor-pointer' : 'p-3',
+                            isDark
+                              ? "bg-gradient-to-b from-black/40 to-black/20 ring-white/10 hover:ring-white/20"
+                              : "bg-gradient-to-b from-white/40 to-white/20 ring-white/30 hover:ring-white/40"
+                          )}
                           onClick={() => {
                             if (isCollapsed)
                               setCollapsedIds((prev) => prev.filter((id) => id !== m.id));
@@ -278,29 +345,20 @@ export default function ChatGrid({
                                   : 'opacity-0 group-hover:opacity-100'
                               }`}
                             >
-                              {selectedModels.length - 1 !== collapsedIds.length ? (
-                                <button
-                                  onClick={() => {
-                                    setCollapsedIds(() =>
-                                      selectedModels
-                                        .map((i) => (i.id === m.id ? 'NAI' : i.id))
-                                        .filter((id) => id !== 'NAI'),
-                                    );
-                                  }}
-                                  className="icon-btn h-7 w-7 accent-focus"
-                                  title={`Expand ${m.label} response`}
-                                >
-                                  <Expand size={12} />
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => setCollapsedIds(() => [])}
-                                  className="icon-btn h-7 w-7 accent-focus"
-                                  title={`Shrink ${m.label} response`}
-                                >
-                                  <Shrink size={12} />
-                                </button>
-                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedModal({
+                                    model: m,
+                                    response: ans,
+                                    userMessage: row.user.content,
+                                  });
+                                }}
+                                className="icon-btn h-7 w-7 accent-focus"
+                                title={`Open ${m.label} response in full screen`}
+                              >
+                                <Expand size={12} />
+                              </button>
 
                               <CopyToClipboard
                                 getText={() => sanitizeContent(ans.content)}
@@ -308,23 +366,25 @@ export default function ChatGrid({
                               />
                             </div>
                           )}
-                          <div className="relative">
+                          <div className="relative overflow-hidden">
                             <div
-                              className={`text-sm leading-relaxed w-full pr-8 ${
-                                isCollapsed ? 'overflow-hidden max-h-20 opacity-70' : 'space-y-2'
+                              className={`text-sm leading-relaxed w-full pr-8 break-words overflow-wrap-anywhere ${
+                                isCollapsed ? 'overflow-hidden max-h-20 opacity-70 line-clamp-3' : 'space-y-2'
                               } ${
                                 !isCollapsed
                                   ? 'max-h-[40vh] md:max-h-[400px] overflow-y-auto custom-scrollbar'
                                   : ''
                               }`}
-                              style={{ WebkitOverflowScrolling: 'touch' }}
+                              style={{ WebkitOverflowScrolling: 'touch', wordBreak: 'break-word', overflowWrap: 'break-word' }}
                             >
                               {ans &&
                               String(ans.content || '').length > 0 &&
                               !['Thinking…', 'Typing…'].includes(String(ans.content)) ? (
                                 <>
-                                  <div className="rounded-2xl ring-white/10 px-3 py-2">
-                                    <MarkdownLite text={sanitizeContent(ans.content)} />
+                                  <div className="rounded-2xl ring-white/10 px-3 py-2 overflow-hidden">
+                                    <div className="break-words overflow-wrap-anywhere" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                                      <MarkdownLite text={sanitizeContent(ans.content)} />
+                                    </div>
                                   </div>
                                   {/* Token usage footer */}
                                   {ans.tokens &&
@@ -340,8 +400,16 @@ export default function ChatGrid({
                                         : (ans.tokens?.total ?? undefined);
                                       const outTokens = estimateTokens(String(ans.content || ''));
                                       return (
-                                        <div className="mt-2 text-[11px] text-zinc-300/80">
-                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-white/10 bg-white/5">
+                                        <div className={cn(
+                                          "mt-2 text-[11px]",
+                                          isDark ? "text-zinc-300/80" : "text-gray-600/90"
+                                        )}>
+                                          <span className={cn(
+                                            "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px]",
+                                            isDark 
+                                              ? "border border-white/10 bg-white/5"
+                                              : "border border-gray-300/30 bg-white/30"
+                                          )}>
                                             {typeof inTokens === 'number' && (
                                               <span className="opacity-80">In:</span>
                                             )}
@@ -357,7 +425,12 @@ export default function ChatGrid({
                                       );
                                     })()}
                                   {ans.code === 503 && ans.provider === 'openrouter' && (
-                                    <div className="mt-2 inline-flex items-center gap-2 text-xs text-amber-200/90 bg-amber-500/15 ring-1 ring-amber-300/30 px-2.5 py-1.5 rounded">
+                                    <div className={cn(
+                                      "mt-2 inline-flex items-center gap-2 text-xs px-2.5 py-1.5 rounded ring-1",
+                                      isDark
+                                        ? "text-amber-200/90 bg-amber-500/15 ring-amber-300/30"
+                                        : "text-amber-800/90 bg-amber-100/60 ring-amber-400/40"
+                                    )}>
                                       <span>
                                         Free pool temporarily unavailable (503). Try again soon,
                                         switch model, or add your own OpenRouter API key for higher
@@ -367,7 +440,12 @@ export default function ChatGrid({
                                         onClick={() =>
                                           window.dispatchEvent(new Event('open-settings'))
                                         }
-                                        className="ml-1 px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                                        className={cn(
+                                          "ml-1 px-2 py-1 rounded border transition-colors",
+                                          isDark
+                                            ? "bg-white/10 hover:bg-white/20 text-white border-white/10"
+                                            : "bg-white/60 hover:bg-white/80 text-gray-700 border-gray-300/40"
+                                        )}
                                       >
                                         Add key
                                       </button>
@@ -388,7 +466,12 @@ export default function ChatGrid({
                                         onClick={() =>
                                           window.dispatchEvent(new Event('open-settings'))
                                         }
-                                        className="text-xs px-2.5 py-1 rounded text-white border border-white/10 accent-action-fill"
+                                        className={cn(
+                                          "text-xs px-2.5 py-1 rounded border accent-action-fill",
+                                          isDark
+                                            ? "text-white border-white/10"
+                                            : "text-gray-700 border-gray-300/40"
+                                        )}
                                       >
                                         Add keys
                                       </button>
@@ -398,25 +481,50 @@ export default function ChatGrid({
                               ) : loadingIds.includes(m.id) ||
                                 (ans && ['Thinking…', 'Typing…'].includes(String(ans.content))) ? (
                                 <div className="w-full self-stretch">
-                                  <div className="inline-flex items-center gap-2 text-[12px] font-medium text-rose-100">
-                                    <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/10 ring-1 ring-white/15">
-                                      <span className="text-white/90">Thinking</span>
+                                  <div className={cn(
+                                    "inline-flex items-center gap-2 text-[12px] font-medium",
+                                    isDark ? "text-rose-100" : "text-rose-700"
+                                  )}>
+                                    <span className={cn(
+                                      "inline-flex items-center gap-2 px-2.5 py-1 rounded-full ring-1",
+                                      isDark 
+                                        ? "bg-white/10 ring-white/15"
+                                        : "bg-white/40 ring-white/30"
+                                    )}>
+                                      <span className={isDark ? "text-white/90" : "text-gray-700"}>Thinking</span>
                                       <span className="inline-flex items-center gap-0.5" aria-hidden>
-                                        <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-bounce" style={{ animationDelay: '0ms' }} />
-                                        <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: '120ms' }} />
-                                        <span className="w-1.5 h-1.5 rounded-full bg-white/50 animate-bounce" style={{ animationDelay: '240ms' }} />
+                                        <span className={cn(
+                                          "w-1.5 h-1.5 rounded-full animate-bounce",
+                                          isDark ? "bg-white/70" : "bg-gray-600/70"
+                                        )} style={{ animationDelay: '0ms' }} />
+                                        <span className={cn(
+                                          "w-1.5 h-1.5 rounded-full animate-bounce",
+                                          isDark ? "bg-white/60" : "bg-gray-600/60"
+                                        )} style={{ animationDelay: '120ms' }} />
+                                        <span className={cn(
+                                          "w-1.5 h-1.5 rounded-full animate-bounce",
+                                          isDark ? "bg-white/50" : "bg-gray-600/50"
+                                        )} style={{ animationDelay: '240ms' }} />
                                       </span>
                                     </span>
                                   </div>
                                 </div>
                               ) : (
-                                <span className="text-zinc-400 text-sm">No response</span>
+                                <span className={cn(
+                                  "text-sm",
+                                  isDark ? "text-zinc-400" : "text-gray-500"
+                                )}>No response</span>
                               )}
                             </div>
                           </div>
                           {isCollapsed && (
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[11px] px-2 py-1 rounded-full border border-white/10 bg-black/50 inline-flex items-center gap-1">
+                              <span className={cn(
+                                "opacity-0 group-hover:opacity-100 transition-opacity text-[11px] px-2 py-1 rounded-full border inline-flex items-center gap-1",
+                                isDark 
+                                  ? "border-white/10 bg-black/50"
+                                  : "border-gray-300/40 bg-white/70"
+                              )}>
                                 <Eye size={12} /> Expand
                               </span>
                             </div>
@@ -445,6 +553,17 @@ export default function ChatGrid({
           setPendingDelete(null);
         }}
       />
+
+      {/* Expanded Chat Modal */}
+      {expandedModal && (
+        <ExpandedChatModal
+          isOpen={true}
+          onClose={() => setExpandedModal(null)}
+          model={expandedModal.model}
+          response={expandedModal.response}
+          userMessage={expandedModal.userMessage}
+        />
+      )}
     </>
   );
 }
