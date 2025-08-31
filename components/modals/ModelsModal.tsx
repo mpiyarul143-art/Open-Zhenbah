@@ -8,6 +8,8 @@ import { MODEL_CATALOG } from '@/lib/models';
 import { useLocalStorage } from '@/lib/useLocalStorage';
 import { mergeModels } from '@/lib/customModels';
 import type { CustomModel } from '@/lib/customModels';
+import { useTheme } from '@/lib/themeContext';
+import { cn } from '@/lib/utils';
 
 export type ModelsModalProps = {
   open: boolean;
@@ -26,6 +28,8 @@ export default function ModelsModal({
   customModels,
   onToggle,
 }: ModelsModalProps) {
+  const { theme } = useTheme();
+  const isDark = theme.mode === 'dark';
   const [searchQuery, setSearchQuery] = useState('');
   const [favoriteIds, setFavoriteIds] = useLocalStorage<string[]>('ai-fiesta:favorite-models', [
     'unstable-gpt-5-chat',
@@ -114,10 +118,6 @@ export default function ModelsModal({
     // Only Open Provider models are truly free
     return m.provider === 'open-provider' && m.free;
   };
-  const isByok = (m: AiModel) => {
-    // OpenRouter, Gemini, Mistral, and Ollama models require configuration (BYOK)
-    return m.provider === 'openrouter' || m.provider === 'gemini' || m.provider === 'mistral' || m.provider === 'ollama';
-  };
   const isUnc = (m: AiModel) =>
     /uncensored/i.test(m.label) ||
     /venice/i.test(m.model) ||
@@ -152,12 +152,28 @@ export default function ModelsModal({
     return 'Open Source Models';
   };
 
-  // External SVG icons for brand headings (monochrome, reliable)
-  const BRAND_ICONS: Record<string, { url: string; alt: string }> = {
-    OpenAI: { url: 'https://cdn.simpleicons.org/openai/ffffff', alt: 'OpenAI / ChatGPT' },
-    Google: { url: 'https://cdn.simpleicons.org/googlegemini/ffffff', alt: 'Google Gemini' },
-    Anthropic: { url: 'https://cdn.simpleicons.org/anthropic/ffffff', alt: 'Anthropic / Claude' },
-    Grok: { url: 'https://cdn.simpleicons.org/xai/ffffff', alt: 'xAI Grok' },
+  // External SVG icons for brand headings (theme-aware)
+  const BRAND_ICONS: Record<string, { darkUrl: string; lightUrl: string; alt: string }> = {
+    OpenAI: { 
+      darkUrl: 'https://cdn.simpleicons.org/openai/ffffff', 
+      lightUrl: 'https://cdn.simpleicons.org/openai/000000',
+      alt: 'OpenAI / ChatGPT' 
+    },
+    Google: { 
+      darkUrl: 'https://cdn.simpleicons.org/googlegemini/ffffff', 
+      lightUrl: 'https://cdn.simpleicons.org/googlegemini/000000',
+      alt: 'Google Gemini' 
+    },
+    Anthropic: { 
+      darkUrl: 'https://cdn.simpleicons.org/anthropic/ffffff', 
+      lightUrl: 'https://cdn.simpleicons.org/anthropic/000000',
+      alt: 'Anthropic / Claude' 
+    },
+    Grok: { 
+      darkUrl: 'https://cdn.simpleicons.org/xai/ffffff', 
+      lightUrl: 'https://cdn.simpleicons.org/xai/000000',
+      alt: 'xAI Grok' 
+    },
   };
 
   const toggleFavorite = (modelId: string) => {
@@ -220,33 +236,49 @@ export default function ModelsModal({
     iconAlt?: string;
   }) => (
     <div className="space-y-3">
-      <div className="text-base font-semibold text-white flex items-center gap-3 pb-2 border-b border-zinc-700/50">
-        <div className="p-2 rounded-lg bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700/50">
+      <div className={cn(
+        "text-base font-semibold flex items-center gap-3 pb-2 border-b",
+        isDark ? "text-white border-zinc-700/50" : "text-gray-800 border-gray-300/50"
+      )}>
+        <div className={cn(
+          "p-2 rounded-lg border",
+          isDark ? "bg-gradient-to-br from-zinc-800 to-zinc-900 border-zinc-700/50" : "bg-gradient-to-br from-white/80 to-gray-50/80 border-gray-300/50"
+        )}>
           {iconUrl ? (
             <img
               src={iconUrl}
               alt={iconAlt || title}
-              className="h-5 w-5 object-contain opacity-90"
+              className={cn(
+                "h-5 w-5 object-contain",
+                isDark ? "opacity-90" : "opacity-80"
+              )}
               data-ignore-errors="true"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).style.display = 'none';
               }}
             />
           ) : (
-            <div className="text-zinc-300">
+            <div className={cn(
+              isDark ? "text-zinc-300" : "text-gray-600"
+            )}>
               {getCategoryIcon(title)}
             </div>
           )}
         </div>
-        <span className="text-lg">{title}</span>
-        <span className="text-sm text-zinc-400 ml-auto bg-zinc-800/50 px-2 py-0.5 rounded-full">
+        <span className={cn(
+          "text-lg",
+          isDark ? "text-white" : "text-gray-800"
+        )}>{title}</span>
+        <span className={cn(
+          "text-sm ml-auto px-2 py-0.5 rounded-full",
+          isDark ? "text-zinc-400 bg-zinc-800/50" : "text-gray-600 bg-gray-200/80"
+        )}>
           {models.length}
         </span>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {models.map((m) => {
           const free = isFree(m);
-          const byok = isByok(m);
           const selected = selectedIds.includes(m.id);
           const disabled = !selected && selectedModels.length >= 5;
           const isThinking = isThinkingModel(m);
@@ -256,23 +288,39 @@ export default function ModelsModal({
             <div
               key={m.id}
               onClick={() => !disabled && handleToggle(m)}
-              className={`relative group cursor-pointer rounded-2xl border backdrop-blur-sm transition-all duration-300 overflow-hidden ${
-                disabled ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.02] hover:shadow-2xl hover:shadow-red-500/5'
-              } ${
+              className={cn(
+                "relative group cursor-pointer rounded-2xl border backdrop-blur-sm transition-all duration-300 overflow-hidden",
+                disabled ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.02] hover:shadow-2xl',
                 selected
-                  ? 'border-red-400/50 bg-gradient-to-br from-red-950/40 via-zinc-900/90 to-black/70 shadow-2xl shadow-red-500/20 ring-1 ring-red-500/20'
-                  : 'border-zinc-700/60 bg-gradient-to-br from-zinc-800/50 via-zinc-900/70 to-black/50 hover:border-zinc-600/70 hover:from-zinc-800/70 hover:via-zinc-900/90 hover:to-black/70 hover:ring-1 hover:ring-zinc-500/20'
-              }`}
+                  ? isDark 
+                    ? 'border-red-400/50 bg-gradient-to-br from-red-950/40 via-zinc-900/90 to-black/70 shadow-2xl shadow-red-500/20 ring-1 ring-red-500/20'
+                    : 'border-red-400/60 bg-gradient-to-br from-red-50/80 via-white/90 to-red-50/60 shadow-2xl shadow-red-500/10 ring-1 ring-red-400/30'
+                  : isDark
+                    ? 'border-zinc-700/60 bg-gradient-to-br from-zinc-800/50 via-zinc-900/70 to-black/50 hover:border-zinc-600/70 hover:from-zinc-800/70 hover:via-zinc-900/90 hover:to-black/70 hover:ring-1 hover:ring-zinc-500/20'
+                    : 'border-gray-300/60 bg-gradient-to-br from-white/80 via-gray-50/70 to-white/50 hover:border-gray-400/70 hover:from-white/90 hover:via-gray-50/90 hover:to-white/70 hover:ring-1 hover:ring-gray-400/20'
+              )}
             >
               {/* Enhanced gradient overlays */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/5 to-transparent pointer-events-none" />
-              <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] via-transparent to-black/10 pointer-events-none" />
+              <div className={cn(
+                "absolute inset-0 bg-gradient-to-t pointer-events-none",
+                isDark ? "from-black/30 via-black/5 to-transparent" : "from-gray-100/30 via-gray-50/5 to-transparent"
+              )} />
+              <div className={cn(
+                "absolute inset-0 bg-gradient-to-br pointer-events-none",
+                isDark ? "from-white/[0.02] via-transparent to-black/10" : "from-white/20 via-transparent to-gray-100/10"
+              )} />
               
               {/* Selection glow effect */}
               {selected && (
                 <>
-                  <div className="absolute inset-0 bg-gradient-to-br from-red-500/15 via-red-500/5 to-red-500/10 pointer-events-none" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-red-900/20 via-transparent to-transparent pointer-events-none" />
+                  <div className={cn(
+                    "absolute inset-0 bg-gradient-to-br pointer-events-none",
+                    isDark ? "from-red-500/15 via-red-500/5 to-red-500/10" : "from-red-400/10 via-red-300/3 to-red-400/8"
+                  )} />
+                  <div className={cn(
+                    "absolute inset-0 bg-gradient-to-t pointer-events-none",
+                    isDark ? "from-red-900/20 via-transparent to-transparent" : "from-red-100/15 via-transparent to-transparent"
+                  )} />
                 </>
               )}
               
@@ -283,73 +331,133 @@ export default function ModelsModal({
                   <div className="flex flex-wrap gap-2">
                     {m.good && (
                       <motion.span 
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-yellow-500/25 to-amber-500/25 text-yellow-200 text-xs font-bold border border-yellow-500/30 shadow-lg shadow-yellow-500/10"
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-lg",
+                          isDark
+                            ? "bg-gradient-to-r from-yellow-500/25 to-amber-500/25 text-yellow-200 border-yellow-500/30 shadow-yellow-500/10"
+                            : "bg-gradient-to-r from-yellow-400/80 to-amber-400/80 text-yellow-900 border-yellow-600/40 shadow-yellow-400/20"
+                        )}
                         whileHover={{ scale: 1.05 }}
                       >
-                        <Star size={12} className="text-yellow-400" fill="currentColor" />
+                        <Star size={12} className={cn(isDark ? "text-yellow-400" : "text-yellow-700")} fill="currentColor" />
                         Pro
                       </motion.span>
                     )}
                     {free && (
                       <motion.span 
-                        className="inline-flex items-center px-2.5 py-1 rounded-full bg-gradient-to-r from-green-500/25 to-emerald-500/25 text-green-200 text-xs font-bold border border-green-500/30 shadow-lg shadow-green-500/10"
+                        className={cn(
+                          "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border shadow-lg",
+                          isDark
+                            ? "bg-gradient-to-r from-green-500/25 to-emerald-500/25 text-green-200 border-green-500/30 shadow-green-500/10"
+                            : "bg-gradient-to-r from-green-400/80 to-emerald-400/80 text-green-900 border-green-600/40 shadow-green-400/20"
+                        )}
                         whileHover={{ scale: 1.05 }}
                       >
                         Free
                       </motion.span>
                     )}
-                    {byok && (
-                      <motion.span 
-                        className="inline-flex items-center px-2.5 py-1 rounded-full bg-gradient-to-r from-blue-500/25 to-cyan-500/25 text-blue-200 text-xs font-bold border border-blue-500/30 shadow-lg shadow-blue-500/10"
-                        whileHover={{ scale: 1.05 }}
-                      >
-                        BYOK
-                      </motion.span>
-                    )}
                     {isThinking && (
                       <motion.span 
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-500/25 to-violet-500/25 text-purple-200 text-xs font-bold border border-purple-500/30 shadow-lg shadow-purple-500/10"
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-lg",
+                          isDark
+                            ? "bg-gradient-to-r from-purple-500/25 to-violet-500/25 text-purple-200 border-purple-500/30 shadow-purple-500/10"
+                            : "bg-gradient-to-r from-purple-400/80 to-violet-400/80 text-purple-900 border-purple-600/40 shadow-purple-400/20"
+                        )}
                         whileHover={{ scale: 1.05 }}
                       >
-                        <Brain size={12} className="text-purple-400" />
+                        <Brain size={12} className={cn(isDark ? "text-purple-400" : "text-purple-700")} />
                         Thinking
                       </motion.span>
                     )}
                     {isVision && (
                       <motion.span 
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-cyan-500/25 to-teal-500/25 text-cyan-200 text-xs font-bold border border-cyan-500/30 shadow-lg shadow-cyan-500/10"
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-lg",
+                          isDark
+                            ? "bg-gradient-to-r from-cyan-500/25 to-teal-500/25 text-cyan-200 border-cyan-500/30 shadow-cyan-500/10"
+                            : "bg-gradient-to-r from-cyan-400/80 to-teal-400/80 text-cyan-900 border-cyan-600/40 shadow-cyan-400/20"
+                        )}
                         whileHover={{ scale: 1.05 }}
                       >
-                        <Eye size={12} className="text-cyan-400" />
+                        <Eye size={12} className={cn(isDark ? "text-cyan-400" : "text-cyan-700")} />
                         Vision
                       </motion.span>
                     )}
                     {isUnc(m) && (
                       <motion.span 
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-red-500/25 to-rose-500/25 text-red-200 text-xs font-bold border border-red-500/30 shadow-lg shadow-red-500/10"
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-lg",
+                          isDark
+                            ? "bg-gradient-to-r from-red-500/25 to-rose-500/25 text-red-200 border-red-500/30 shadow-red-500/10"
+                            : "bg-gradient-to-r from-red-400/80 to-rose-400/80 text-red-900 border-red-600/40 shadow-red-400/20"
+                        )}
                         whileHover={{ scale: 1.05 }}
                       >
-                        <span className="w-2.5 h-2.5 rounded-full bg-red-400 animate-pulse" />
+                        <span className={cn(
+                          "w-2.5 h-2.5 rounded-full animate-pulse",
+                          isDark ? "bg-red-400" : "bg-red-700"
+                        )} />
                         Uncensored
                       </motion.span>
                     )}
                     {m.category === 'image' && (
                       <motion.span 
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500/25 to-rose-500/25 text-pink-200 text-xs font-bold border border-pink-500/30 shadow-lg shadow-pink-500/10"
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-lg",
+                          isDark
+                            ? "bg-gradient-to-r from-pink-500/25 to-rose-500/25 text-pink-200 border-pink-500/30 shadow-pink-500/10"
+                            : "bg-gradient-to-r from-pink-400/80 to-rose-400/80 text-pink-900 border-pink-600/40 shadow-pink-400/20"
+                        )}
                         whileHover={{ scale: 1.05 }}
                       >
-                        <ImageIcon size={12} className="text-pink-400" />
+                        <ImageIcon size={12} className={cn(isDark ? "text-pink-400" : "text-pink-700")} />
                         Image
                       </motion.span>
                     )}
                     {m.category === 'audio' && (
                       <motion.span 
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-orange-500/25 to-red-500/25 text-orange-200 text-xs font-bold border border-orange-500/30 shadow-lg shadow-orange-500/10"
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-lg",
+                          isDark
+                            ? "bg-gradient-to-r from-orange-500/25 to-red-500/25 text-orange-200 border-orange-500/30 shadow-orange-500/10"
+                            : "bg-gradient-to-r from-orange-400/80 to-red-400/80 text-orange-900 border-orange-600/40 shadow-orange-400/20"
+                        )}
                         whileHover={{ scale: 1.05 }}
                       >
-                        <Mic size={12} className="text-orange-400" />
+                        <Mic size={12} className={cn(isDark ? "text-orange-400" : "text-orange-700")} />
                         Audio
                       </motion.span>
+                    )}
+                    {/* Special NEW badge styled like Pro/Free, different color */}
+                    {Array.isArray(m.tags) && m.tags.includes('new') && (
+                      <motion.span
+                        className={cn(
+                          "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border shadow-lg",
+                          isDark
+                            ? "bg-gradient-to-r from-sky-500/25 to-cyan-500/25 text-sky-200 border-sky-500/30 shadow-sky-500/10"
+                            : "bg-gradient-to-r from-sky-400/80 to-cyan-400/80 text-sky-900 border-sky-600/40 shadow-sky-400/20"
+                        )}
+                        whileHover={{ scale: 1.05 }}
+                        title="New"
+                      >
+                        New
+                      </motion.span>
+                    )}
+                    {Array.isArray(m.tags) && m.tags.filter((t) => t !== 'new').length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {m.tags.filter((tag) => tag !== 'new').map((tag) => (
+                          <span
+                            key={`${m.id}-tag-${tag}`}
+                            className={cn(
+                              "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border",
+                              isDark ? "bg-white/5 border-white/10 text-white/80" : "bg-black/5 border-black/10 text-gray-700/90"
+                            )}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
                   <button
@@ -357,35 +465,50 @@ export default function ModelsModal({
                       e.stopPropagation();
                       toggleFavorite(m.id);
                     }}
-                    className={`p-1.5 rounded-lg transition-all duration-200 ${
+                    className={cn(
+                      "p-1.5 rounded-lg transition-all duration-200",
                       isFav(m)
                         ? 'text-yellow-400 hover:text-yellow-300 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20'
-                        : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/10 border border-transparent hover:border-white/10'
-                    }`}
+                        : isDark
+                          ? 'text-zinc-400 hover:text-zinc-300 hover:bg-white/10 border border-transparent hover:border-white/10'
+                          : 'text-gray-500 hover:text-gray-400 hover:bg-gray-200/50 border border-transparent hover:border-gray-300/50'
+                    )}
                   >
                     {isFav(m) ? <Star size={14} fill="currentColor" /> : <StarOff size={14} />}
                   </button>
                 </div>
                 
                 {/* Model name */}
-                <h4 className="font-semibold text-white text-[15px] mb-1.5 line-clamp-2 leading-tight">
+                <h4 className={cn(
+                  "font-semibold text-[15px] mb-1.5 line-clamp-2 leading-tight",
+                  isDark ? "text-white" : "text-gray-800"
+                )}>
                   {m.label}
                 </h4>
                 
                 {/* Provider */}
-                <p className="text-[12px] text-zinc-400 mb-3 capitalize font-medium">
+                <p className={cn(
+                  "text-[12px] mb-3 capitalize font-medium",
+                  isDark ? "text-zinc-400" : "text-gray-600"
+                )}>
                   {m.provider.replace('-', ' ')}
                 </p>
                 
                 {/* Enhanced selection indicator */}
                 <div className="mt-auto">
-                  <div className={`w-full h-1 rounded-full transition-all duration-300 ${
+                  <div className={cn(
+                    "w-full h-1 rounded-full transition-all duration-300",
                     selected 
                       ? 'bg-gradient-to-r from-red-600 via-red-400 to-red-600 shadow-lg shadow-red-500/40' 
-                      : 'bg-gradient-to-r from-zinc-700/80 via-zinc-600/60 to-zinc-700/80'
-                  }`} />
+                      : isDark
+                        ? 'bg-gradient-to-r from-zinc-700/80 via-zinc-600/60 to-zinc-700/80'
+                        : 'bg-gradient-to-r from-gray-300/80 via-gray-400/60 to-gray-300/80'
+                  )} />
                   {selected && (
-                    <div className="text-xs text-red-300 font-semibold mt-1.5 text-center tracking-wide">
+                    <div className={cn(
+                      "text-xs font-semibold mt-1.5 text-center tracking-wide",
+                      isDark ? "text-red-300" : "text-red-600"
+                    )}>
                       ✓ SELECTED
                     </div>
                   )}
@@ -431,10 +554,10 @@ export default function ModelsModal({
         .filter((name) => grouped[name].length > 0)
         .map((name) => (
           <Section
-            key={`Text-${name}`}
+            key={name}
             title={name}
             models={grouped[name]}
-            iconUrl={BRAND_ICONS[name]?.url ?? '/brand.png'}
+            iconUrl={isDark ? (BRAND_ICONS[name]?.darkUrl ?? '/brand.svg') : (BRAND_ICONS[name]?.lightUrl ?? '/brand.svg')}
             iconAlt={BRAND_ICONS[name]?.alt ?? 'Open Fiesta'}
           />
         ));
@@ -449,38 +572,67 @@ export default function ModelsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className={cn(
+        "absolute inset-0 backdrop-blur-sm",
+        isDark ? "bg-black/70" : "bg-white/70"
+      )} onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
-        className="relative w-full sm:w-full max-w-none sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-3 sm:mx-auto rounded-xl sm:rounded-2xl border border-white/10 bg-zinc-900/90 p-4 sm:p-5 md:p-6 lg:p-6 shadow-2xl h-[90vh] sm:max-h-[90vh] overflow-hidden flex flex-col min-h-0"
+        className={cn(
+          "relative w-full sm:w-full max-w-none sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-3 sm:mx-auto rounded-xl sm:rounded-2xl border p-4 sm:p-5 md:p-6 lg:p-6 shadow-2xl h-[90vh] sm:max-h-[90vh] overflow-hidden flex flex-col min-h-0",
+          isDark ? "border-white/10 bg-zinc-900/90" : "border-gray-300/50 bg-white/95"
+        )}
       >
-        <div className="px-4 sm:-mx-6 md:-mx-7 lg:-mx-8 sm:px-6 md:px-7 lg:px-8 pt-1 pb-2 mb-2 flex items-center justify-between bg-zinc-900/95 backdrop-blur border-b border-white/10">
-          <h3 className="text-base md:text-lg lg:text-xl font-semibold tracking-wide">
+        <div className={cn(
+          "px-4 sm:-mx-6 md:-mx-7 lg:-mx-8 sm:px-6 md:px-7 lg:px-8 pt-1 pb-2 mb-2 flex items-center justify-between backdrop-blur border-b",
+          isDark ? "bg-zinc-900/95 border-white/10" : "bg-white/95 border-gray-300/50"
+        )}>
+          <h3 className={cn(
+            "text-base md:text-lg lg:text-xl font-semibold tracking-wide",
+            isDark ? "text-white" : "text-gray-800"
+          )}>
             Select up to 5 models
           </h3>
           <button
             aria-label="Close"
             onClick={onClose}
-            className="h-8 w-8 md:h-8 md:w-8 inline-flex items-center justify-center rounded-md bg-white/10 hover:bg-white/20"
+            className={cn(
+              "h-8 w-8 md:h-8 md:w-8 inline-flex items-center justify-center rounded-md transition-colors",
+              isDark ? "bg-white/10 hover:bg-white/20 text-white" : "bg-gray-200/80 hover:bg-gray-300/80 text-gray-700"
+            )}
           >
             <X size={16} />
           </button>
         </div>
         <div className="flex items-center justify-between mb-4">
-          <div className="text-sm text-zinc-300">
-            Selected: <span className="text-white font-medium">{selectedModels.length}/5</span>
+          <div className={cn(
+            "text-sm",
+            isDark ? "text-zinc-300" : "text-gray-600"
+          )}>
+            Selected: <span className={cn(
+              "font-medium",
+              isDark ? "text-white" : "text-gray-800"
+            )}>{selectedModels.length}/5</span>
           </div>
           
           {/* Search bar */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
+            <Search className={cn(
+              "absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4",
+              isDark ? "text-zinc-400" : "text-gray-500"
+            )} />
             <input
               type="text"
               placeholder="Search models..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-zinc-400 focus:outline-none focus:border-white/30 focus:bg-white/10 w-56"
+              className={cn(
+                "pl-9 pr-3 py-1.5 border rounded-lg text-sm focus:outline-none w-56 transition-colors",
+                isDark 
+                  ? "bg-black/30 border-white/20 text-white placeholder-zinc-400 focus:border-red-500/50 focus:bg-black/40 focus:ring-2 focus:ring-red-500/30 shadow-lg"
+                  : "bg-gray-100/80 border-gray-300/50 text-gray-800 placeholder-gray-500 focus:border-gray-400/70 focus:bg-gray-200/80"
+              )}
             />
           </div>
         </div>

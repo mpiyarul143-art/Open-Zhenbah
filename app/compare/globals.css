@@ -1112,6 +1112,142 @@ body.light * {
   animation: img-ripple 2.6s ease-in-out infinite;
 }
 
+/* Compare page: visual overrides (moved from styled-jsx) */
+.compare-page {
+  position: relative;
+}
+/* Remove the background overlay in light mode, keep minimal dark overlay for dark mode */
+.compare-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: transparent;
+}
+:root.dark .compare-page::before {
+  background:
+    radial-gradient(1000px 600px at 50% 10%, rgba(160, 40, 40, 0.15), transparent 60%),
+    radial-gradient(800px 500px at 20% 80%, rgba(160, 40, 40, 0.10), transparent 70%),
+    linear-gradient(to bottom, rgba(3, 3, 3, 0.85), rgba(5, 5, 5, 0.90));
+  opacity: 1;
+}
+:root:not(.dark) .compare-page::before {
+  background: transparent;
+  opacity: 0;
+}
+
+/* Global blur/soft-darkening overlay for compare page - only for dark mode */
+.compare-page::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root.dark .compare-page::after {
+  background: rgba(0, 0, 0, 0.22);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  backdrop-filter: blur(18px) saturate(120%);
+}
+
+/* Glassmorphism for chat cards (dark theme only) */
+:root.dark .compare-page .group.relative.rounded-lg {
+  background: rgba(10, 10, 10, 0.50) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  backdrop-filter: blur(18px) saturate(130%);
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+:root.dark .compare-page .group.relative.rounded-lg:hover {
+  background: rgba(14, 14, 14, 0.56) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+:root.dark .compare-page .group.relative.rounded-lg:focus-within {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  box-shadow:
+    0 20px 52px rgba(0, 0, 0, 0.54),
+    0 0 0 1px rgba(255, 255, 255, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+/* Light theme: glassmorphism */
+:root:not(.dark) .compare-page .group.relative.rounded-lg {
+  background: rgba(255, 255, 255, 0.25) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+:root:not(.dark) .compare-page .group.relative.rounded-lg:hover {
+  background: rgba(255, 255, 255, 0.35) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+:root:not(.dark) .compare-page .group.relative.rounded-lg:focus-within {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* Remove grey pill around the Thinking indicator (compare-only) */
+.compare-page [class*="inline-flex"][class*="rounded-full"][class*="ring-1"],
+.compare-page [class*="bg-white/10"][class*="ring-1"][class*="rounded-full"] {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* Text styling for better readability */
+.compare-page .text-white\/90 {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+:root:not(.dark) .compare-page .text-white\/90 {
+  color: rgba(0, 0, 0, 0.85) !important;
+}
+
+/* Remove bubble background/ring from assistant content blocks */
+.compare-page .max-w\[72ch\].rounded-2xl,
+.compare-page .group.relative.rounded-lg [class*="max-w"][class*="rounded-2xl"] {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Improve text readability inside answer content */
+.compare-page .max-w\[72ch\] {
+  color: rgba(255, 255, 255, 0.92);
+}
+:root:not(.dark) .compare-page .max-w\[72ch\] {
+  color: rgba(0, 0, 0, 0.85);
+}
+
+/* Cell border styling */
+:root.dark .compare-page .group.relative.rounded-lg {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+:root:not(.dark) .compare-page .group.relative.rounded-lg {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
 /* Glassy Toast theme (neutral, blurred, accent progress) */
 .glass-toast {
   border-radius: 12px !important;

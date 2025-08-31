@@ -1,5 +1,8 @@
 'use client';
 
+import { useTheme } from '@/lib/themeContext';
+import { cn } from '@/lib/utils';
+
 interface LaunchScreenProps {
   backgroundClass: string;
   title?: string;
@@ -12,12 +15,19 @@ export default function LaunchScreen({
   backgroundClass,
   title = 'Open Fiesta',
   subtitle = 'Warming things up…',
-  logoSrc = '/brand.png',
+  logoSrc = '/brand.svg',
   dismissed = false,
 }: LaunchScreenProps) {
+  const { theme } = useTheme();
+  const isDark = theme.mode === 'dark';
   return (
     <div
-      className={`min-h-screen w-full ${backgroundClass} relative text-white transition-opacity duration-300 ease-out ${dismissed ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+      className={cn(
+        "min-h-screen w-full relative transition-opacity duration-300 ease-out",
+        backgroundClass,
+        isDark ? "text-white" : "text-gray-800",
+        dismissed ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      )}
     >
       <div
         className={`absolute inset-0 z-0 pointer-events-none opacity-95 transition-opacity duration-300 ease-out ${dismissed ? 'opacity-0' : 'opacity-95'}`}
@@ -29,11 +39,21 @@ export default function LaunchScreen({
               <div
                 role="status"
                 aria-live="polite"
-                className={`w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-2xl p-7 sm:p-8 text-center relative overflow-hidden transition-opacity duration-300 ease-out ${dismissed ? 'opacity-0' : 'opacity-100'}`}
+                className={cn(
+                  "w-full max-w-sm rounded-2xl border backdrop-blur-md shadow-2xl p-7 sm:p-8 text-center relative overflow-hidden transition-opacity duration-300 ease-out",
+                  isDark 
+                    ? "border-white/10 bg-black/20" 
+                    : "border-gray-300/30 bg-white/80",
+                  dismissed ? 'opacity-0' : 'opacity-100'
+                )}
               >
                 {/* Ambient glow */}
                 <div
-                  className={`pointer-events-none absolute -inset-12 bg-gradient-radial from-white/10 via-transparent to-transparent blur-3xl transition-opacity duration-300 ease-out ${dismissed ? 'opacity-0' : 'opacity-100'}`}
+                  className={cn(
+                    "pointer-events-none absolute -inset-12 bg-gradient-radial via-transparent to-transparent blur-3xl transition-opacity duration-300 ease-out",
+                    isDark ? "from-white/10" : "from-gray-400/15",
+                    dismissed ? 'opacity-0' : 'opacity-100'
+                  )}
                 />
 
                 {/* Card content */}
@@ -41,7 +61,12 @@ export default function LaunchScreen({
                   {/* Logo with soft ring */}
                   {logoSrc && (
                     <div
-                      className="mx-auto inline-flex items-center justify-center rounded-2xl ring-1 ring-white/15 shadow-md p-2 bg-white/5"
+                      className={cn(
+                        "mx-auto inline-flex items-center justify-center rounded-2xl ring-1 shadow-md p-2",
+                        isDark 
+                          ? "ring-white/15 bg-black/30" 
+                          : "ring-gray-300/30 bg-gray-100/50"
+                      )}
                       style={{ boxShadow: '0 0 36px 2px var(--accent-primary)' }}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -50,13 +75,22 @@ export default function LaunchScreen({
                   )}
 
                   {/* Title & subtitle */}
-                  <h2 className="mt-3 text-base font-semibold tracking-wide text-white/95">
+                  <h2 className={cn(
+                    "mt-3 text-base font-semibold tracking-wide",
+                    isDark ? "text-white/95" : "text-gray-800/95"
+                  )}>
                     {title}
                   </h2>
-                  <p className="mt-1 text-sm text-white/70">{subtitle}</p>
+                  <p className={cn(
+                    "mt-1 text-sm",
+                    isDark ? "text-white/70" : "text-gray-600/80"
+                  )}>{subtitle}</p>
 
                   {/* Subtle accent progress with sheen */}
-                  <div className="mt-6 relative h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                  <div className={cn(
+                    "mt-6 relative h-1.5 w-full overflow-hidden rounded-full",
+                    isDark ? "bg-black/30" : "bg-gray-300/40"
+                  )}>
                     {/* Base accent line */}
                     <div
                       className="absolute inset-0"

@@ -4,6 +4,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Palette, Sun, Moon, Type, Grid3X3, Star, MessageSquare } from 'lucide-react';
 import { useTheme } from '@/lib/themeContext';
+import { cn } from '@/lib/utils';
 import {
   ACCENT_COLORS,
   FONT_FAMILIES,
@@ -28,7 +29,8 @@ const AccentOption = React.memo<{
   };
   isSelected: boolean;
   onSelect: (id: AccentColor) => void;
-}>(({ accent, isSelected, onSelect }) => {
+  isDark: boolean;
+}>(({ accent, isSelected, onSelect, isDark }) => {
   const handleClick = useCallback(() => {
     onSelect(accent.id);
   }, [accent.id, onSelect]);
@@ -36,9 +38,16 @@ const AccentOption = React.memo<{
   return (
     <button
       onClick={handleClick}
-      className={`p-3 rounded-lg border transition-colors text-left ${
-        isSelected ? 'border-white/30 bg-white/10' : 'border-white/10 bg-white/5 hover:bg-white/8'
-      }`}
+      className={cn(
+        "p-3 rounded-lg border transition-colors text-left",
+        isSelected
+          ? isDark
+            ? 'border-white/30 bg-white/10'
+            : 'border-black/30 bg-black/10'
+          : isDark
+            ? 'border-white/10 bg-white/5 hover:bg-white/8'
+            : 'border-black/10 bg-black/5 hover:bg-black/8'
+      )}
     >
       <div className="flex items-center gap-3 mb-2">
         <div
@@ -53,7 +62,10 @@ const AccentOption = React.memo<{
         />
         <div>
           <div className="text-sm font-medium">{accent.name}</div>
-          <div className="text-xs text-white/60">{accent.description}</div>
+          <div className={cn(
+            "text-xs",
+            isDark ? "text-white/60" : "text-gray-600"
+          )}>{accent.description}</div>
         </div>
       </div>
       <div className="flex gap-1">
@@ -78,10 +90,17 @@ AccentOption.displayName = 'AccentOption';
 
 // Memoized font option component
 const FontOption = React.memo<{
-  font: { id: FontFamily; name: string; description: string };
+  font: {
+    id: FontFamily;
+    name: string;
+    description: string;
+    primary: string;
+    fallback: string;
+  };
   isSelected: boolean;
   onSelect: (id: FontFamily) => void;
-}>(({ font, isSelected, onSelect }) => {
+  isDark: boolean;
+}>(({ font, isSelected, onSelect, isDark }) => {
   const handleClick = useCallback(() => {
     onSelect(font.id);
   }, [font.id, onSelect]);
@@ -89,18 +108,37 @@ const FontOption = React.memo<{
   return (
     <button
       onClick={handleClick}
-      className={`w-full p-4 rounded-lg border transition-colors text-left ${
-        isSelected ? 'border-white/30 bg-white/10' : 'border-white/10 bg-white/5 hover:bg-white/8'
-      }`}
+      className={cn(
+        "p-4 rounded-lg border transition-colors text-left w-full",
+        isSelected
+          ? isDark
+            ? 'border-white/30 bg-white/10'
+            : 'border-black/30 bg-black/10'
+          : isDark
+            ? 'border-white/10 bg-white/5 hover:bg-white/8'
+            : 'border-black/10 bg-black/5 hover:bg-black/8'
+      )}
     >
       <div className="flex items-center justify-between mb-2">
         <div>
-          <div className="text-sm font-medium">{font.name}</div>
-          <div className="text-xs text-white/60">{font.description}</div>
+          <div className={cn(
+            "text-sm font-medium mb-1",
+            isDark ? "text-white" : "text-gray-800"
+          )}>{font.name}</div>
+          <div className={cn(
+            "text-xs",
+            isDark ? "text-white/60" : "text-gray-600"
+          )}>
+            {font.description}
+          </div>
         </div>
         {isSelected && <div className="w-2 h-2 rounded-full bg-blue-500" />}
       </div>
-      <div className={`text-sm text-white/80 font-preview font-preview-${font.id}`}>
+      <div className={cn(
+        "text-sm font-preview",
+        `font-preview-${font.id}`,
+        isDark ? "text-white/80" : "text-gray-700"
+      )}>
         The quick brown fox jumps over the lazy dog 123456
       </div>
     </button>
@@ -119,7 +157,8 @@ const BackgroundOption = React.memo<{
   };
   isSelected: boolean;
   onSelect: (id: BackgroundStyle) => void;
-}>(({ background, isSelected, onSelect }) => {
+  isDark: boolean;
+}>(({ background, isSelected, onSelect, isDark }) => {
   const handleClick = useCallback(() => {
     onSelect(background.id);
   }, [background.id, onSelect]);
@@ -127,14 +166,27 @@ const BackgroundOption = React.memo<{
   return (
     <button
       onClick={handleClick}
-      className={`p-3 rounded-lg border transition-colors text-left ${
-        isSelected ? 'border-white/30 bg-white/10' : 'border-white/10 bg-white/5 hover:bg-white/8'
-      }`}
+      className={cn(
+        "p-3 rounded-lg border transition-colors text-left",
+        isSelected
+          ? isDark
+            ? 'border-white/30 bg-white/10'
+            : 'border-black/30 bg-black/10'
+          : isDark
+            ? 'border-white/10 bg-white/5 hover:bg-white/8'
+            : 'border-black/10 bg-black/5 hover:bg-black/8'
+      )}
     >
       <div className="flex items-center justify-between mb-3">
         <div>
-          <div className="text-sm font-medium">{background.name}</div>
-          <div className="text-xs text-white/60">{background.description}</div>
+          <div className={cn(
+            "text-sm font-medium",
+            isDark ? "text-white" : "text-gray-800"
+          )}>{background.name}</div>
+          <div className={cn(
+            "text-xs",
+            isDark ? "text-white/60" : "text-gray-600"
+          )}>{background.description}</div>
         </div>
         {isSelected && <div className="w-2 h-2 rounded-full bg-blue-500" />}
       </div>
@@ -156,7 +208,8 @@ const BadgeOption = React.memo<{
   };
   isSelected: boolean;
   onSelect: (id: BadgePair) => void;
-}>(({ badge, isSelected, onSelect }) => {
+  isDark: boolean;
+}>(({ badge, isSelected, onSelect, isDark }) => {
   const handleClick = useCallback(() => {
     onSelect(badge.id);
   }, [badge.id, onSelect]);
@@ -164,14 +217,27 @@ const BadgeOption = React.memo<{
   return (
     <button
       onClick={handleClick}
-      className={`p-3 rounded-lg border transition-colors text-left ${
-        isSelected ? 'border-white/30 bg-white/10' : 'border-white/10 bg-white/5 hover:bg-white/8'
-      }`}
+      className={cn(
+        "p-3 rounded-lg border transition-colors text-left",
+        isSelected
+          ? isDark
+            ? 'border-white/30 bg-white/10'
+            : 'border-black/30 bg-black/10'
+          : isDark
+            ? 'border-white/10 bg-white/5 hover:bg-white/8'
+            : 'border-black/10 bg-black/5 hover:bg-black/8'
+      )}
     >
       <div className="flex items-center justify-between mb-3">
         <div>
-          <div className="text-sm font-medium">{badge.name}</div>
-          <div className="text-xs text-white/60">{badge.description}</div>
+          <div className={cn(
+            "text-sm font-medium",
+            isDark ? "text-white" : "text-gray-800"
+          )}>{badge.name}</div>
+          <div className={cn(
+            "text-xs",
+            isDark ? "text-white/60" : "text-gray-600"
+          )}>{badge.description}</div>
         </div>
         {isSelected && <div className="w-2 h-2 rounded-full bg-blue-500" />}
       </div>
@@ -213,6 +279,7 @@ type ThemeToggleProps = { compact?: boolean };
 export default function ThemeToggle({ compact }: ThemeToggleProps) {
   const { theme, setAccent, setFont, setBackground, setBadgePair, toggleMode, updateTheme } =
     useTheme();
+  const isDark = theme.mode === 'dark';
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'accent' | 'font' | 'background' | 'badges' | 'input'>(
     'accent',
@@ -281,10 +348,13 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
         aria-label="Open Theme Settings"
         title="Theme Settings"
         onClick={handleOpen}
-        className={`inline-flex items-center ${
-          compact ? "justify-center h-9 w-9 gap-0" : "gap-2 px-3 py-2"
-        } rounded-md bg-gray-200 border border-gray-300 text-gray-800 hover:bg-gray-300
-            dark:bg-white/5 dark:border-white/15 dark:text-white dark:hover:bg-white/10 transition-colors text-xs`}
+        className={cn(
+          "inline-flex items-center gap-1.5 text-xs h-9 rounded-xl border shadow transition-all duration-200",
+          compact ? "w-9 justify-center px-0" : "px-3 py-2",
+          isDark
+            ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+            : "border-white/40 bg-white/70 hover:bg-white/80 text-gray-700"
+        )}
       >
         <Palette size={14} />
         {!compact && <span>Theme</span>}
@@ -293,13 +363,18 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
       {open &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={handleClose} />
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-md pointer-events-auto" onClick={handleClose} />
             <div
               role="dialog"
               aria-modal="true"
               aria-label="Theme Settings"
-              className="relative w-full mx-3 sm:mx-6 max-w-2xl lg:max-w-3xl max-h-[88vh] rounded-2xl border border-white/10 bg-zinc-900/95 text-white p-4 md:p-6 lg:p-7 shadow-2xl backdrop-blur-sm z-10 flex flex-col overflow-hidden"
+              className={cn(
+                "relative w-full mx-3 sm:mx-6 max-w-2xl lg:max-w-3xl max-h-[88vh] rounded-2xl border p-4 md:p-6 lg:p-7 shadow-2xl backdrop-blur-sm z-10 flex flex-col overflow-hidden pointer-events-auto",
+                isDark
+                  ? "border-white/10 bg-zinc-900/95 text-white"
+                  : "border-black/10 bg-white/95 text-gray-800"
+              )}
             >
               {/* Header */}
               <div className="flex items-center justify-between mb-4">
@@ -307,19 +382,34 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
                 <button
                   aria-label="Close"
                   onClick={handleClose}
-                  className="h-8 w-8 inline-flex items-center justify-center rounded-md bg-white/10 hover:bg-white/20 transition-colors"
+                  className={cn(
+                    "h-8 w-8 inline-flex items-center justify-center rounded-md transition-colors",
+                    isDark
+                      ? "bg-white/10 hover:bg-white/20"
+                      : "bg-black/10 hover:bg-black/20"
+                  )}
                 >
                   <X size={16} />
                 </button>
               </div>
 
               {/* Quick Mode Toggle */}
-              <div className="mb-6 p-3 rounded-lg bg-white/5 border border-white/10 shrink-0">
+              <div className={cn(
+                "mb-6 p-3 rounded-lg border shrink-0",
+                isDark
+                  ? "bg-white/5 border-white/10"
+                  : "bg-black/5 border-black/10"
+              )}>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Dark/Light Mode</span>
                   <button
                     onClick={handleToggleMode}
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-white/10 hover:bg-white/15 transition-colors"
+                    className={cn(
+                      "inline-flex items-center gap-2 px-3 py-2 rounded-md transition-colors",
+                      isDark
+                        ? "bg-white/10 hover:bg-white/15"
+                        : "bg-black/10 hover:bg-black/15"
+                    )}
                   >
                     {theme.mode === 'dark' ? <Moon size={14} /> : <Sun size={14} />}
                     <span className="text-sm capitalize">{theme.mode}</span>
@@ -328,7 +418,10 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
               </div>
 
               {/* Tab Navigation */}
-              <div className="flex flex-nowrap gap-1 mb-4 p-1 rounded-lg bg-white/5 shrink-0 overflow-x-auto -mx-1 px-1">
+              <div className={cn(
+                "flex flex-nowrap gap-1 mb-4 p-1 rounded-lg shrink-0 overflow-x-auto -mx-1 px-1",
+                isDark ? "bg-white/5" : "bg-black/5"
+              )}>
                 {[
                   { id: 'accent' as const, label: 'Colors', icon: Palette },
                   { id: 'badges' as const, label: 'Badges', icon: Star },
@@ -347,11 +440,16 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
                   <button
                     key={id}
                     onClick={() => handleTabChange(id)}
-                    className={`shrink-0 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
+                    className={cn(
+                      "shrink-0 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors",
                       activeTab === id
-                        ? 'bg-white/15 text-white border border-white/20'
-                        : 'text-white/70 hover:text-white hover:bg-white/5'
-                    }`}
+                        ? isDark
+                          ? 'bg-white/15 text-white border border-white/20'
+                          : 'bg-black/15 text-gray-800 border border-black/20'
+                        : isDark
+                          ? 'text-white/70 hover:text-white hover:bg-white/5'
+                          : 'text-gray-600 hover:text-gray-800 hover:bg-black/5'
+                    )}
                   >
                     <Icon size={14} />
                     {label}
@@ -364,7 +462,10 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
                 {/* Accent Colors Tab */}
                 {activeTab === 'accent' && (
                   <div className="space-y-3">
-                    <h3 className="text-sm font-medium text-white/80 mb-3">
+                    <h3 className={cn(
+                      "text-sm font-medium mb-3",
+                      isDark ? "text-white/80" : "text-gray-600"
+                    )}>
                       Choose your accent color
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
@@ -374,6 +475,7 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
                           accent={accent}
                           isSelected={theme.accent === accent.id}
                           onSelect={handleAccentChange}
+                          isDark={isDark}
                         />
                       ))}
                     </div>
@@ -383,7 +485,10 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
                 {/* Badge Colors Tab */}
                 {activeTab === 'badges' && (
                   <div className="space-y-3">
-                    <h3 className="text-sm font-medium text-white/80 mb-3">
+                    <h3 className={cn(
+                      "text-sm font-medium mb-3",
+                      isDark ? "text-white/80" : "text-gray-600"
+                    )}>
                       Choose your badge colors
                     </h3>
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -393,11 +498,18 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
                           badge={badge}
                           isSelected={theme.badgePair === badge.id}
                           onSelect={handleBadgeChange}
+                          isDark={isDark}
                         />
                       ))}
                     </div>
-                    <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
-                      <p className="text-xs text-white/60">
+                    <div className={cn(
+                      "mt-4 p-3 rounded-lg border",
+                      isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"
+                    )}>
+                      <p className={cn(
+                        "text-xs",
+                        isDark ? "text-white/60" : "text-gray-500"
+                      )}>
                         Badge colors change the Pro/Free badge appearance while maintaining the same
                         shape, size, and icons.
                       </p>
@@ -408,7 +520,10 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
                 {/* Font Families Tab */}
                 {activeTab === 'font' && (
                   <div className="space-y-3">
-                    <h3 className="text-sm font-medium text-white/80 mb-3">
+                    <h3 className={cn(
+                      "text-sm font-medium mb-3",
+                      isDark ? "text-white/80" : "text-gray-600"
+                    )}>
                       Choose your font family
                     </h3>
                     <div className="space-y-2">
@@ -418,6 +533,7 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
                           font={font}
                           isSelected={theme.font === font.id}
                           onSelect={handleFontChange}
+                          isDark={isDark}
                         />
                       ))}
                     </div>
@@ -427,7 +543,10 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
                 {/* Background Styles Tab */}
                 {activeTab === 'background' && (
                   <div className="space-y-3">
-                    <h3 className="text-sm font-medium text-white/80 mb-3">
+                    <h3 className={cn(
+                      "text-sm font-medium mb-3",
+                      isDark ? "text-white/80" : "text-gray-600"
+                    )}>
                       Choose your background style
                     </h3>
                     <div className="space-y-3">
@@ -437,11 +556,18 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
                           background={bg}
                           isSelected={theme.background === bg.id}
                           onSelect={handleBackgroundChange}
+                          isDark={isDark}
                         />
                       ))}
                     </div>
-                    <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
-                      <p className="text-xs text-white/60">
+                    <div className={cn(
+                      "mt-4 p-3 rounded-lg border",
+                      isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"
+                    )}>
+                      <p className={cn(
+                        "text-xs",
+                        isDark ? "text-white/60" : "text-gray-500"
+                      )}>
                         <strong>Gradient:</strong> Rich, complex radial gradients that match your
                         accent color
                         <br />
@@ -453,7 +579,10 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
 
                 {activeTab === 'input' && (
                   <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-white/80 mb-3">Chat input style</h3>
+                    <h3 className={cn(
+                      "text-sm font-medium mb-3",
+                      isDark ? "text-white/80" : "text-gray-600"
+                    )}>Chat input style</h3>
                     <div className="grid sm:grid-cols-2 gap-3">
                       {[
                         {
@@ -476,16 +605,27 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
                                 chatInputStyle: opt.id as ChatInputStyle,
                               })
                             }
-                            className={`p-3 rounded-lg border text-left transition-colors ${
+                            className={cn(
+                              "p-3 rounded-lg border text-left transition-colors",
                               selected
-                                ? 'border-white/30 bg-white/10'
-                                : 'border-white/10 bg-white/5 hover:bg-white/8'
-                            }`}
+                                ? isDark
+                                  ? 'border-white/30 bg-white/10'
+                                  : 'border-black/30 bg-black/10'
+                                : isDark
+                                  ? 'border-white/10 bg-white/5 hover:bg-white/8'
+                                  : 'border-black/10 bg-black/5 hover:bg-black/8'
+                            )}
                           >
                             <div className="flex items-center justify-between mb-3">
                               <div>
-                                <div className="text-sm font-medium">{opt.name}</div>
-                                <div className="text-xs text-white/60">{opt.desc}</div>
+                                <div className={cn(
+                                  "text-sm font-medium",
+                                  isDark ? "text-white" : "text-gray-800"
+                                )}>{opt.name}</div>
+                                <div className={cn(
+                                  "text-xs",
+                                  isDark ? "text-white/60" : "text-gray-600"
+                                )}>{opt.desc}</div>
                               </div>
                               {selected && <div className="w-2 h-2 rounded-full bg-blue-500" />}
                             </div>
@@ -502,7 +642,12 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
                         );
                       })}
                     </div>
-                    <div className="mt-2 p-3 rounded-lg bg-white/5 border border-white/10 text-xs text-white/60">
+                    <div className={cn(
+                      "mt-2 p-3 rounded-lg border text-xs",
+                      isDark 
+                        ? "bg-white/5 border-white/10 text-white/60"
+                        : "bg-black/5 border-black/10 text-gray-500"
+                    )}>
                       Frosty adds stronger glass effect, brightness separation and a focus ring when
                       active.
                     </div>
@@ -511,8 +656,14 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
               </div>
 
               {/* Footer */}
-              <div className="flex justify-between items-center mt-6 pt-4 border-t border-white/10 shrink-0">
-                <div className="text-xs text-white/60">
+              <div className={cn(
+                "flex justify-between items-center mt-6 pt-4 border-t shrink-0",
+                isDark ? "border-white/10" : "border-black/10"
+              )}>
+                <div className={cn(
+                  "text-xs",
+                  isDark ? "text-white/60" : "text-gray-500"
+                )}>
                   Current: {theme.mode} mode, {currentAccent.name}, {currentFont.name},{' '}
                   {currentBackground.name}
                 </div>

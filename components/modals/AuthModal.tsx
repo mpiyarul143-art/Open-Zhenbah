@@ -49,7 +49,7 @@ export default function AuthModal({ isOpen, onClose, title = "Sign in required",
         <div className="p-6">
           <div className="text-center mb-6">
             <img
-              src="/brand.png"
+              src="/brand.svg"
               alt="AI Fiesta"
               className="mx-auto h-12 w-12 rounded-lg mb-4"
             />

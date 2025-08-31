@@ -39,7 +39,7 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, { hideInput?: boolean 
 
   // Compute brand logo from a model
   const getBrandFromModel = (model?: AiModel): { src: string; alt: string } => {
-    const fallback = '/brand.png'
+    const fallback = '/brand.svg'
     if (!model) return { src: fallback, alt: 'Open Fiesta' }
     const id = model.id.toLowerCase()
     const m = model.model.toLowerCase()
@@ -204,7 +204,7 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, { hideInput?: boolean 
             alt={alt || 'Model'}
             className="w-full h-full object-contain p-1"
             onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = '/brand.png'
+              (e.currentTarget as HTMLImageElement).src = '/brand.svg'
             }}
           />
         </div>

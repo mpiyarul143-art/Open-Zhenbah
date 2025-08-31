@@ -4,10 +4,14 @@ import { createPortal } from 'react-dom';
 import { X, ExternalLink, Cog, Eye, EyeOff } from 'lucide-react';
 import { useLocalStorage } from '@/lib/useLocalStorage';
 import { ApiKeys } from '@/lib/types';
+import { useTheme } from '@/lib/themeContext';
+import { cn } from '@/lib/utils';
 
 type SettingsProps = { compact?: boolean };
 
 export default function Settings({ compact }: SettingsProps) {
+  const { theme } = useTheme();
+  const isDark = theme.mode === 'dark';
   const [open, setOpen] = useState(false);
   const [keys, setKeys] = useLocalStorage<ApiKeys>("ai-fiesta:keys", {});
   const [gemini, setGemini] = useState(keys.gemini || "");
@@ -53,10 +57,13 @@ export default function Settings({ compact }: SettingsProps) {
     <div>
       <button
         onClick={() => setOpen(true)}
-        className={`inline-flex items-center gap-1.5 text-xs ${
-          compact ? "h-9 w-9 justify-center px-0" : "px-3 py-2"
-        } rounded-md bg-gray-200 border border-gray-300 text-gray-800 hover:bg-gray-300
-            dark:bg-white/5 dark:border-white/15 dark:text-white dark:hover:bg-white/10 shadow accent-focus`}
+        className={cn(
+          "inline-flex items-center gap-1.5 text-xs h-9 rounded-xl border shadow transition-all duration-200",
+          compact ? "w-9 justify-center px-0" : "px-3 py-2",
+          isDark
+            ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+            : "border-white/40 bg-white/70 hover:bg-white/80 text-gray-700"
+        )}
         title="Settings"
         aria-label="Settings"
       >
@@ -66,23 +73,36 @@ export default function Settings({ compact }: SettingsProps) {
       {open &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
             <div
-              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm pointer-events-auto"
               onClick={() => setOpen(false)}
             />
-            <div className="relative w-full mx-3 sm:mx-6 max-w-2xl lg:max-w-3xl rounded-2xl border border-white/10 bg-zinc-900/95 text-white p-5 md:p-6 lg:p-7 shadow-2xl">
+            <div className={cn(
+              "relative w-full mx-3 sm:mx-6 max-w-2xl lg:max-w-3xl rounded-2xl border p-5 md:p-6 lg:p-7 shadow-2xl pointer-events-auto",
+              isDark
+                ? "border-white/10 bg-zinc-900/95 text-white"
+                : "border-black/10 bg-white/95 text-gray-800"
+            )}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-lg md:text-xl font-semibold">API Keys</h2>
                 <button
                   aria-label="Close"
                   onClick={() => setOpen(false)}
-                  className="h-8 w-8 inline-flex items-center justify-center rounded-md bg-white/10 hover:bg-white/20"
+                  className={cn(
+                    "h-8 w-8 inline-flex items-center justify-center rounded-md",
+                    isDark
+                      ? "bg-white/10 hover:bg-white/20"
+                      : "bg-black/10 hover:bg-black/20"
+                  )}
                 >
                   <X size={16} />
                 </button>
               </div>
-              <p className="text-xs md:text-sm text-zinc-300 mb-5">
+              <p className={cn(
+                "text-xs md:text-sm mb-5",
+                isDark ? "text-zinc-300" : "text-gray-600"
+              )}>
                 Keys are stored locally in your browser via localStorage and sent only with your
                 requests. Do not hardcode keys in code.
               </p>
@@ -95,7 +115,12 @@ export default function Settings({ compact }: SettingsProps) {
                       href="https://aistudio.google.com/app/u/5/apikey?pli=1"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/15 border border-white/15"
+                      className={cn(
+                        "inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border",
+                        isDark
+                          ? "bg-white/10 hover:bg-white/15 border-white/15"
+                          : "bg-black/10 hover:bg-black/15 border-black/15"
+                      )}
                     >
                       <ExternalLink size={12} /> Get API key
                     </a>
@@ -106,12 +131,22 @@ export default function Settings({ compact }: SettingsProps) {
                       value={gemini}
                       onChange={(e) => setGemini(e.target.value)}
                       placeholder="AIza..."
-                      className="w-full bg-black/40 border border-white/15 rounded-md px-3 py-2.5 text-sm font-mono tracking-wide placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-white/20 pr-10"
+                      className={cn(
+                        "w-full border rounded-md px-3 py-2.5 text-sm font-mono tracking-wide focus:outline-none focus:ring-2 pr-10",
+                        isDark
+                          ? "bg-black/40 border-white/15 placeholder:text-zinc-500 focus:ring-white/20"
+                          : "bg-white/40 border-black/15 placeholder:text-gray-500 focus:ring-black/20"
+                      )}
                     />
                     <button
                       type="button"
                       onClick={() => setShowGemini(!showGemini)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+                      className={cn(
+                        "absolute right-2 top-1/2 -translate-y-1/2",
+                        isDark
+                          ? "text-zinc-400 hover:text-white"
+                          : "text-gray-500 hover:text-gray-700"
+                      )}
                     >
                       {showGemini ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -127,7 +162,12 @@ export default function Settings({ compact }: SettingsProps) {
                       href="https://openrouter.ai/sign-in?redirect_url=https%3A%2F%2Fopenrouter.ai%2Fsettings%2Fkeys"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/15 border border-white/15"
+                      className={cn(
+                        "inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border",
+                        isDark
+                          ? "bg-white/10 hover:bg-white/15 border-white/15"
+                          : "bg-black/10 hover:bg-black/15 border-black/15"
+                      )}
                     >
                       <ExternalLink size={12} /> Get API key
                     </a>
@@ -138,12 +178,22 @@ export default function Settings({ compact }: SettingsProps) {
                       value={openrouter}
                       onChange={(e) => setOpenrouter(e.target.value)}
                       placeholder="sk-or-..."
-                      className="w-full bg-black/40 border border-white/15 rounded-md px-3 py-2.5 text-sm font-mono tracking-wide placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-white/20 pr-10"
+                      className={cn(
+                        "w-full border rounded-md px-3 py-2.5 text-sm font-mono tracking-wide focus:outline-none focus:ring-2 pr-10",
+                        isDark
+                          ? "bg-black/40 border-white/15 placeholder:text-zinc-500 focus:ring-white/20"
+                          : "bg-white/40 border-black/15 placeholder:text-gray-500 focus:ring-black/20"
+                      )}
                     />
                     <button
                       type="button"
                       onClick={() => setShowOpenrouter(!showOpenrouter)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+                      className={cn(
+                        "absolute right-2 top-1/2 -translate-y-1/2",
+                        isDark
+                          ? "text-zinc-400 hover:text-white"
+                          : "text-gray-500 hover:text-gray-700"
+                      )}
                     >
                       {showOpenrouter ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -158,7 +208,12 @@ export default function Settings({ compact }: SettingsProps) {
                       href="https://console.mistral.ai"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/15 border border-white/15"
+                      className={cn(
+                        "inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border",
+                        isDark
+                          ? "bg-white/10 hover:bg-white/15 border-white/15"
+                          : "bg-black/10 hover:bg-black/15 border-black/15"
+                      )}
                     >
                       <ExternalLink size={12} /> Get API key
                     </a>
@@ -167,9 +222,17 @@ export default function Settings({ compact }: SettingsProps) {
                     value={mistral}
                     onChange={(e) => setMistral(e.target.value)}
                     placeholder="..."
-                    className="w-full bg-black/40 border border-white/15 rounded-md px-3 py-2.5 text-sm font-mono tracking-wide placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-white/20"
+                    className={cn(
+                      "w-full border rounded-md px-3 py-2.5 text-sm font-mono tracking-wide focus:outline-none focus:ring-2",
+                      isDark
+                        ? "bg-black/40 border-white/15 placeholder:text-zinc-500 focus:ring-white/20"
+                        : "bg-white/40 border-black/15 placeholder:text-gray-500 focus:ring-black/20"
+                    )}
                   />
-                  <p className="text-xs text-zinc-400 mt-1">
+                  <p className={cn(
+                    "text-xs mt-1",
+                    isDark ? "text-zinc-400" : "text-gray-500"
+                  )}>
                     Access to Mistral Large, Medium, Small, Codestral, Pixtral, and specialized
                     models
                   </p>
@@ -184,7 +247,12 @@ export default function Settings({ compact }: SettingsProps) {
                       href="https://ollama.com"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/15 border border-white/15"
+                      className={cn(
+                        "inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border",
+                        isDark
+                          ? "bg-white/10 hover:bg-white/15 border-white/15"
+                          : "bg-black/10 hover:bg-black/15 border-black/15"
+                      )}
                     >
                       <ExternalLink size={12} /> Get Ollama
                     </a>
@@ -193,9 +261,17 @@ export default function Settings({ compact }: SettingsProps) {
                     value={ollama}
                     onChange={(e) => setOllama(e.target.value)}
                     placeholder="http://localhost:11434"
-                    className="w-full bg-black/40 border border-white/15 rounded-md px-3 py-2.5 text-sm font-mono tracking-wide placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-white/20"
+                    className={cn(
+                      "w-full border rounded-md px-3 py-2.5 text-sm font-mono tracking-wide focus:outline-none focus:ring-2",
+                      isDark
+                        ? "bg-black/40 border-white/15 placeholder:text-zinc-500 focus:ring-white/20"
+                        : "bg-white/40 border-black/15 placeholder:text-gray-500 focus:ring-black/20"
+                    )}
                   />
-                  <p className="text-xs text-zinc-400 mt-1">
+                  <p className={cn(
+                    "text-xs mt-1",
+                    isDark ? "text-zinc-400" : "text-gray-500"
+                  )}>
                     Base URL for your local Ollama instance. Default is http://localhost:11434
                   </p>
                 </div>
@@ -203,7 +279,12 @@ export default function Settings({ compact }: SettingsProps) {
               <div className="flex flex-col sm:flex-row gap-2 justify-end mt-6">
                 <button
                   onClick={() => setOpen(false)}
-                  className="px-4 py-2 rounded-md border border-white/15 bg-white/5 hover:bg-white/10 text-sm"
+                  className={cn(
+                    "px-4 py-2 rounded-md border text-sm",
+                    isDark
+                      ? "border-white/15 bg-white/5 hover:bg-white/10"
+                      : "border-black/15 bg-black/5 hover:bg-black/10"
+                  )}
                 >
                   Cancel
                 </button>

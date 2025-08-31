@@ -36,7 +36,7 @@ export default function SignIn() {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <img
-            src="/brand.png"
+            src="/brand.svg"
             alt="AI Fiesta"
             className="mx-auto h-16 w-16 rounded-lg"
           />

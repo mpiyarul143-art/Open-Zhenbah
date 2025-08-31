@@ -29,14 +29,21 @@ import SupportDropdown from '@/components/support-dropdown';
 import Link from 'next/link';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import ProjectModal from '@/components/modals/ProjectModal';
+import { Project } from '@/lib/projects';
+import { cn } from '@/lib/utils';
+import './globals.css';
 
 export default function Home() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const { theme } = useTheme();
+  const isDark = theme.mode === 'dark';
   const [isHydrated, setIsHydrated] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
+  const [projectModalOpen, setProjectModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const backgroundClass = BACKGROUND_STYLES[theme.background].className;
 
   // Redirect to signin if not authenticated (wait for auth to finish loading)
@@ -77,6 +84,27 @@ export default function Home() {
     deleteProject,
     selectProject,
   } = useProjects();
+  
+  // Project modal handlers
+  const handleCreateProject = () => {
+    setEditingProject(null);
+    setProjectModalOpen(true);
+  };
+  
+  const handleEditProject = (project: Project) => {
+    setEditingProject(project);
+    setProjectModalOpen(true);
+  };
+  
+  const handleSaveProject = (project: Project) => {
+    if (editingProject) {
+      updateProject(project);
+    } else {
+      createProject(project);
+    }
+    setEditingProject(null);
+    setProjectModalOpen(false);
+  };
 
   const activeThread = useMemo(
     () => threads.find((t) => t.id === activeId) || null,
@@ -102,9 +130,14 @@ export default function Home() {
   // Build grid template: collapsed => fixed narrow, expanded => normal
   const headerTemplate = useMemo(() => {
     if (selectedModels.length === 0) return '';
-    const parts = selectedModels.map((m) =>
-      collapsedIds.includes(m.id) ? '90px' : '320px',
-    );
+    const isCompact = selectedModels.length < 5;
+    const parts = selectedModels.map((m) => {
+      const collapsed = collapsedIds.includes(m.id);
+      if (collapsed) return '90px';
+      // If fewer than 5 models, allow columns to flex and fill available width.
+      // Otherwise keep fixed width for consistent 5-column comparison.
+      return isCompact ? 'minmax(240px, 1fr)' : '320px';
+    });
     return parts.join(' ');
   }, [selectedModels, collapsedIds]);
 
@@ -279,13 +312,48 @@ export default function Home() {
   }, []);
 
   return (
-    <div className={`compare-page min-h-screen w-full ${backgroundClass} relative text-black dark:text-white`}>
+    <div className={cn("compare-page min-h-screen w-full relative", isDark ? "dark" : "")}>
+      {/* Background */}
+      {isDark ? (
+        <div
+          className="absolute inset-0 z-0"
+          style={{
+            background:
+              "linear-gradient(0deg, rgba(0,0,0,0.6), rgba(0,0,0,0.6)), radial-gradient(68% 58% at 50% 50%, #c81e3a 0%, #a51d35 16%, #7d1a2f 32%, #591828 46%, #3c1722 60%, #2a151d 72%, #1f1317 84%, #141013 94%, #0a0a0a 100%), radial-gradient(90% 75% at 50% 50%, rgba(228,42,66,0.06) 0%, rgba(228,42,66,0) 55%), radial-gradient(150% 120% at 8% 8%, rgba(0,0,0,0) 42%, #0b0a0a 82%, #070707 100%), radial-gradient(150% 120% at 92% 92%, rgba(0,0,0,0) 42%, #0b0a0a 82%, #070707 100%), radial-gradient(60% 50% at 50% 60%, rgba(240,60,80,0.06), rgba(0,0,0,0) 60%), #050505",
+          }}
+        />
+      ) : (
+        /* Aurora Dream Corner Whispers */
+        <div
+          className="absolute inset-0 z-0"
+          style={{
+            background: `
+              radial-gradient(ellipse 85% 65% at 8% 8%, rgba(175, 109, 255, 0.42), transparent 60%),
+              radial-gradient(ellipse 75% 60% at 75% 35%, rgba(255, 235, 170, 0.55), transparent 62%),
+              radial-gradient(ellipse 70% 60% at 15% 80%, rgba(255, 100, 180, 0.40), transparent 62%),
+              radial-gradient(ellipse 70% 60% at 92% 92%, rgba(120, 190, 255, 0.45), transparent 62%),
+              linear-gradient(180deg, #f7eaff 0%, #fde2ea 100%)
+            `,
+          }}
+        />
+      )}
+
+      {/* Soft vignette for dark mode */}
+      {isDark && (
+        <div
+          className="absolute inset-0 z-0 pointer-events-none"
+          style={{
+            backgroundImage: "radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.5) 100%)",
+            opacity: 0.95,
+          }}
+        />
+      )}
+
       {showSplash && (
         <div className="fixed inset-0 z-[9999]">
-          <LaunchScreen backgroundClass={backgroundClass} dismissed={isHydrated} />
+          <LaunchScreen backgroundClass={BACKGROUND_STYLES[theme.background].className} dismissed={isHydrated} />
         </div>
       )}
-      <div className="absolute inset-0 z-0 pointer-events-none opacity-95" />
 
       <div className="relative z-10 px-3 lg:px-4 py-4 lg:py-6">
         <div className="flex gap-3 lg:gap-4">
@@ -339,18 +407,26 @@ export default function Home() {
             projects={projects}
             activeProjectId={activeProjectId}
             onSelectProject={selectProject}
-            onCreateProject={createProject}
-            onUpdateProject={updateProject}
+            onCreateProject={handleCreateProject}
+            onUpdateProject={handleEditProject}
             onDeleteProject={deleteProject}
           />
 
           {/* Main content */}
           <div className="flex-1 min-w-0 flex flex-col h-[calc(100vh-2rem)] lg:h-[calc(100vh-3rem)] overflow-hidden ">
             {/* Mobile Header with Hamburger */}
-            <div className="lg:hidden flex items-center justify-between p-4 border-b border-white/10">
+          <div className={cn(
+            "lg:hidden flex items-center justify-between p-4 border-b",
+            isDark ? "border-white/10" : "border-rose-200/40"
+          )}>
               <button
                 onClick={() => setMobileSidebarOpen(true)}
-                className="inline-flex items-center justify-center h-9 w-9 rounded-xl bg-gradient-to-r from-white/12 to-white/8 border border-white/15 text-white hover:from-white/18 hover:to-white/12 hover:border-white/25 backdrop-blur-sm shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
+                className={cn(
+                  "inline-flex items-center justify-center h-9 w-9 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95",
+                  isDark
+                    ? "bg-gradient-to-r from-white/12 to-white/8 border border-white/15 text-white hover:from-white/18 hover:to-white/12 hover:border-white/25 backdrop-blur-sm shadow-lg"
+                    : "bg-white border border-zinc-300 text-zinc-700 hover:bg-zinc-50 shadow-sm"
+                )}
                 aria-label="Open menu"
                 title="Menu"
               >
@@ -366,7 +442,12 @@ export default function Home() {
                 </div>
                 <button
                   onClick={() => setMobileActionsOpen((v) => !v)}
-                  className="inline-flex items-center justify-center h-9 w-9 rounded-md border border-white/15 bg-white/5 hover:bg-white/10 shadow"
+                  className={cn(
+                    "inline-flex items-center justify-center h-9 w-9 rounded-md border shadow",
+                    isDark
+                      ? "border-white/15 bg-white/5 hover:bg-white/10"
+                      : "border-rose-200/60 bg-rose-50/60 hover:bg-rose-100/80"
+                  )}
                   aria-label="Open quick actions"
                   title="Actions"
                 >
@@ -379,11 +460,20 @@ export default function Home() {
                 </button>
 
                 {mobileActionsOpen && (
-                  <div className="absolute right-0 top-11 z-50 rounded-xl border border-white/15 bg-black/60 backdrop-blur-md shadow-xl p-2 flex items-center gap-2">
+                  <div className={cn(
+                    "absolute right-0 top-11 z-50 rounded-xl border shadow-xl p-2 flex items-center gap-2 backdrop-blur-md",
+                    isDark
+                      ? "border-white/15 bg-black/60"
+                      : "border-rose-200/50 bg-white/95"
+                  )}>
                     <Link
                       href="/"
-                      className="inline-flex items-center justify-center h-9 w-9 rounded-xl
-              bg-gradient-to-r from-white/12 to-white/8 border border-white/15 text-white hover:from-white/18 hover:to-white/12 hover:border-white/25 backdrop-blur-sm shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
+                      className={cn(
+                        "inline-flex items-center justify-center h-9 w-9 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95",
+                        isDark
+                          ? "bg-gradient-to-r from-white/12 to-white/8 border border-white/15 text-white hover:from-white/18 hover:to-white/12 hover:border-white/25 backdrop-blur-sm shadow-lg"
+                          : "bg-white border border-zinc-300 text-zinc-700 hover:bg-zinc-50 shadow-sm"
+                      )}
                       aria-label="Go to home"
                       title="Home"
                     >
@@ -391,7 +481,12 @@ export default function Home() {
                     </Link>
                     <button
                       onClick={() => { setModelsModalOpen(true); setMobileActionsOpen(false); }}
-                      className="inline-flex items-center gap-1.5 text-xs h-9 w-9 justify-center rounded-md border border-white/15 bg-white/5 hover:bg-white/10 shadow"
+                      className={cn(
+                        "inline-flex items-center gap-1.5 text-xs h-9 w-9 justify-center rounded-md border shadow",
+                        isDark
+                          ? "border-white/15 bg-white/5 hover:bg-white/10"
+                          : "border-rose-200/60 bg-rose-50/60 hover:bg-rose-100/80"
+                      )}
                       title="Change models"
                       aria-label="Change models"
                     >
@@ -460,6 +555,7 @@ export default function Home() {
             {isHydrated && (
               <div className="px-3 lg:px-4 pb-3">
                 <HomeAiInput
+                  isDark={isDark}
                   onSubmit={(text) => {
                     try { console.log('[Compare] HomeAiInput onSubmit:', text); } catch {}
                     send(text);
@@ -476,6 +572,13 @@ export default function Home() {
       </div>
 
       {/* Toasts for share notifications */}
+      <ProjectModal
+        open={projectModalOpen}
+        onClose={() => setProjectModalOpen(false)}
+        onSave={handleSaveProject}
+        project={editingProject}
+      />
+
       <ToastContainer
         position="bottom-right"
         autoClose={3000}
@@ -489,111 +592,12 @@ export default function Home() {
         theme="dark"
       />
 
-      {/* Support dropdown floating action at bottom-right (hidden on mobile) */}
+      
       <div className="hidden sm:block">
         <SupportDropdown theme={theme.mode === 'dark' ? 'dark' : 'light'} />
       </div>
 
-      {/* Compare-only visual overrides */}
-      <style jsx global>{`
-        /* Compare-only background blend overlay */
-        .compare-page {
-          position: relative;
-        }
-        .compare-page::before {
-          content: '';
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          z-index: 0;
-          /* Subtle warm radial glow + dark vignette to match card tones */
-          background:
-            radial-gradient(1000px 600px at 50% 10%, rgba(160, 40, 40, 0.20), transparent 60%),
-            radial-gradient(800px 500px at 20% 80%, rgba(160, 40, 40, 0.14), transparent 70%),
-            linear-gradient(to bottom, rgba(3, 3, 3, 0.92), rgba(5, 5, 5, 0.96));
-        }
-        /* Dark theme: slightly stronger vignette, light theme: softer */
-        :root.dark .compare-page::before { opacity: 1; }
-        :root:not(.dark) .compare-page::before { opacity: 0.85; }
-
-        /* Global blur/soft-darkening overlay for compare page */
-        .compare-page::after {
-          content: '';
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          z-index: 0;
-          background: rgba(0, 0, 0, 0.22);
-          -webkit-backdrop-filter: blur(18px) saturate(120%);
-          backdrop-filter: blur(18px) saturate(120%);
-        }
-
-        /* Glassmorphism for chat cards (dark theme only) */
-        :root.dark .compare-page .group.relative.rounded-lg {
-          background: rgba(10, 10, 10, 0.50) !important;
-          -webkit-backdrop-filter: blur(18px) saturate(130%);
-          backdrop-filter: blur(18px) saturate(130%);
-          border: 1px solid rgba(255, 255, 255, 0.12) !important;
-          box-shadow:
-            0 14px 34px rgba(0, 0, 0, 0.42),
-            inset 0 1px 0 rgba(255, 255, 255, 0.05);
-        }
-        :root.dark .compare-page .group.relative.rounded-lg:hover {
-          background: rgba(14, 14, 14, 0.56) !important;
-          border-color: rgba(255, 255, 255, 0.16) !important;
-          box-shadow:
-            0 18px 44px rgba(0, 0, 0, 0.5),
-            inset 0 1px 0 rgba(255, 255, 255, 0.06);
-        }
-        :root.dark .compare-page .group.relative.rounded-lg:focus-within {
-          outline: none;
-          border-color: rgba(255, 255, 255, 0.2) !important;
-          box-shadow:
-            0 20px 52px rgba(0, 0, 0, 0.54),
-            0 0 0 1px rgba(255, 255, 255, 0.09),
-            inset 0 1px 0 rgba(255, 255, 255, 0.07);
-        }
-
-        /* Light theme fallback: very subtle glass */
-        :root:not(.dark) .compare-page .group.relative.rounded-lg {
-          background: rgba(255, 255, 255, 0.18) !important;
-          -webkit-backdrop-filter: blur(10px) saturate(140%);
-          backdrop-filter: blur(10px) saturate(140%);
-          border: 1px solid rgba(0, 0, 0, 0.06) !important;
-          box-shadow:
-            0 10px 28px rgba(0, 0, 0, 0.18),
-            inset 0 1px 0 rgba(255, 255, 255, 0.3);
-        }
-
-        /* Remove grey pill around the Thinking indicator (compare-only) */
-        .compare-page [class*="inline-flex"][class*="rounded-full"][class*="ring-1"],
-        .compare-page [class*="bg-white/10"][class*="ring-1"][class*="rounded-full"] {
-          background: transparent !important;
-          border: 0 !important;
-          box-shadow: none !important;
-          padding: 0 !important;
-          border-radius: 0 !important;
-        }
-
-        /* Slightly stronger text color for the Thinking label */
-        .compare-page .text-white/90 { color: rgba(255,255,255,0.95) !important; }
-
-        /* Remove bubble background/ring from assistant content blocks */
-        .compare-page .max-w\[72ch\].rounded-2xl,
-        .compare-page .group.relative.rounded-lg [class*="max-w"][class*="rounded-2xl"] {
-          background: transparent !important;
-          border-color: transparent !important;
-          box-shadow: none !important;
-        }
-
-        /* Improve text readability inside answer content */
-        .compare-page .max-w\[72ch\] { color: rgba(255,255,255,0.92); }
-
-        /* Ensure overall cell is darker regardless of hover/collapsed state */
-        .compare-page .group.relative.rounded-lg {
-          border-color: rgba(255,255,255,0.08) !important;
-        }
-      `}</style>
+      
     </div>
   );
 }

@@ -139,14 +139,14 @@ export default function HomeAiInput({ onSubmit, isDark = true, modelSelectorLabe
     if (listening) setTimeout(() => stopListening(), 100)
     // Debug: verify send triggers and onSubmit exists
     try {
-      // eslint-disable-next-line no-console
+ 
       console.log('[HomeAiInput] handleSend invoked with:', text)
     } catch {}
     if (onSubmit) {
       onSubmit(text)
     } else {
       try {
-        // eslint-disable-next-line no-console
+     
         console.warn('[HomeAiInput] onSubmit prop is not provided')
       } catch {}
     }
@@ -175,6 +175,7 @@ export default function HomeAiInput({ onSubmit, isDark = true, modelSelectorLabe
         body: JSON.stringify({ prompt: text }),
       })
       if (!res.ok) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const err = await res.json().catch(() => ({} as any))
         throw new Error(err?.error || `HTTP ${res.status}`)
       }
@@ -193,11 +194,14 @@ export default function HomeAiInput({ onSubmit, isDark = true, modelSelectorLabe
 
   return (
     <motion.div className="w-full py-2" initial={{ y: 0, opacity: 1 }}>
-      <div className="relative max-w-4xl border rounded-[22px] border-black/10 dark:border-white/10 p-0 w-full mx-auto chat-input-shell bg-transparent">
+      <div className={cn(
+        "relative max-w-4xl rounded-[22px] p-0 w-full mx-auto chat-input-shell bg-transparent",
+        isDark ? "border border-black/10 dark:border-white/10" : ""
+      )}>
         <div
           className={cn(
-            'relative rounded-[22px] overflow-hidden outline-none',
-            isDark ? 'bg-black/40' : 'bg-white/80'
+            'relative rounded-[22px] overflow-hidden outline-none backdrop-blur-md',
+            isDark ? 'bg-black/20 border border-white/10' : 'bg-gradient-to-br from-rose-50/90 to-pink-50/80 shadow-lg border border-rose-200/40'
           )}
         >
           {/* Error banner */}
@@ -228,7 +232,7 @@ export default function HomeAiInput({ onSubmit, isDark = true, modelSelectorLabe
                     className={cn(
                       'w-full rounded-xl px-4 py-3 border-none resize-none ring-0 focus:outline-none focus-visible:outline-none leading-[1.5] text-[15px] md:text-base',
                       isDark
-                        ? 'bg-white/5 text-white placeholder:text-white/70'
+                        ? 'bg-transparent text-white placeholder:text-white/70'
                         : 'bg-white text-gray-900 placeholder:text-gray-500',
                     )}
                     onKeyDown={(e) => {
@@ -270,8 +274,8 @@ export default function HomeAiInput({ onSubmit, isDark = true, modelSelectorLabe
                   'w-full rounded-2xl px-5 py-4 border-none resize-none ring-0 focus:outline-none focus-visible:outline-none leading-[1.5] text-[15px] md:text-base',
                   'placeholder:opacity-80 placeholder:text-[15px] md:placeholder:text-base',
                   isDark
-                    ? 'bg-white/5 text-white placeholder:text-white/70'
-                    : 'bg-white text-gray-900 placeholder:text-gray-500',
+                    ? 'bg-transparent text-white placeholder:text-white/70'
+                    : 'bg-transparent text-gray-800 placeholder:text-gray-600',
                   `min-h-[${MIN_HEIGHT}px]`
                 )}
               />
@@ -301,16 +305,20 @@ export default function HomeAiInput({ onSubmit, isDark = true, modelSelectorLabe
           )}
 
           {/* Toolbar */}
-          <div className="h-12 flex items-center justify-between px-3 ai-toolbar-bg bg-inherit">
+          <div className={cn(
+            "h-12 flex items-center justify-between px-3 ai-toolbar-bg",
+            isDark ? "bg-inherit" : "bg-gradient-to-r from-rose-100/70 to-pink-100/60 border-t border-rose-200/50"
+          )}>
             <div className="flex items-center gap-2">
               {/* Attach */}
               <label
                 title="Attach file"
                 className={cn(
-                  'cursor-pointer relative rounded-full p-1.5 bg-black/30 dark:bg-white/10',
+                  'cursor-pointer relative rounded-full p-1.5 transition-all duration-200',
+                  isDark ? 'bg-black/30 dark:bg-white/10' : 'bg-rose-200/40 hover:bg-rose-200/60 border border-rose-300/50',
                   attachedFile
                     ? 'bg-[var(--accent-interactive-primary)]/15 border border-[var(--accent-interactive-primary)] text-[var(--accent-interactive-primary)]'
-                    : 'text-white/60 hover:text-white',
+                    : isDark ? 'text-white/60 hover:text-white' : 'text-rose-700 hover:text-rose-800',
                 )}
               >
                 <input
@@ -331,7 +339,7 @@ export default function HomeAiInput({ onSubmit, isDark = true, modelSelectorLabe
                   onClick={onOpenModelSelector}
                   className={cn(
                     'rounded-full transition-all flex items-center gap-2 px-3 py-1.5 h-8',
-                    isDark ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-black/5 text-gray-800 hover:bg-black/10'
+                    isDark ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-rose-200/40 text-rose-800 hover:bg-rose-200/60 border border-rose-300/50'
                   )}
                   aria-label="Choose model"
                   title="Choose model"
@@ -352,7 +360,7 @@ export default function HomeAiInput({ onSubmit, isDark = true, modelSelectorLabe
                       ? 'bg-[var(--accent-interactive-primary)] text-white'
                       : isDark
                         ? 'bg-white/10 text-white/80'
-                        : 'bg-black/5 text-gray-700'
+                        : 'bg-rose-200/40 text-rose-700 border border-rose-300/50 hover:bg-rose-200/60'
                   )}
                   data-active={showSearch}
                   aria-pressed={showSearch ? 'true' : 'false'}
@@ -387,7 +395,7 @@ export default function HomeAiInput({ onSubmit, isDark = true, modelSelectorLabe
                     'rounded-full p-2 h-8 w-8 transition-all flex items-center justify-center relative',
                     listening
                       ? 'bg-red-500 text-white shadow-red-500/30'
-                      : 'bg-white/10 text-white/80 hover:bg-white/15'
+                      : isDark ? 'bg-white/10 text-white/80 hover:bg-white/15' : 'bg-white/70 text-gray-700 hover:bg-white/80 border border-white/40'
                   )}
                   aria-label={listening ? 'Stop recording' : 'Start voice input'}
                   title={listening ? 'Stop recording' : 'Start voice input'}
@@ -423,7 +431,7 @@ export default function HomeAiInput({ onSubmit, isDark = true, modelSelectorLabe
                   'rounded-full p-2 h-8 w-8 transition-all flex items-center justify-center',
                   value
                     ? 'bg-[var(--accent-interactive-primary)] text-white hover:bg-[var(--accent-interactive-hover)]'
-                    : 'bg-white/10 text-white/50 cursor-not-allowed',
+                    : isDark ? 'bg-white/10 text-white/50 cursor-not-allowed' : 'bg-white/50 text-gray-500 cursor-not-allowed border border-white/40',
                 )}
                 disabled={!value.trim()}
                 aria-label="Send"
