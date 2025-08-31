@@ -65,7 +65,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 ```bash
 npm run dev
-# open http://localhost:3000
+# open http://https://open-fiestaa.vercel.app
 ```
 
 ## Environment Variables
@@ -87,7 +87,7 @@ To enable authentication and chat persistence, configure Supabase:
 - **OAuth redirect URL** (if using Google/GitHub sign-in):
   - Add to each provider in Supabase Auth Settings:
     - `https://YOUR_DOMAIN/auth/callback` (Production)
-    - `http://localhost:3000/auth/callback` (Local)
+    - `http://https://open-fiestaa.vercel.app/auth/callback` (Local)
 
 - **Database schema** (tables used by this app). Run in Supabase SQL editor:
 
@@ -174,7 +174,7 @@ Notes:
    - In Supabase Dashboard -> Authentication -> Providers:
      - Enable Google and/or GitHub.
      - Set Redirect URLs:
-       - Local: `http://localhost:3000/auth/callback`
+       - Local: `http://https://open-fiestaa.vercel.app/auth/callback`
        - Prod: `https://YOUR_DOMAIN/auth/callback`
 
 3. **Create tables and policies**
@@ -190,7 +190,7 @@ Notes:
    - Vercel: Project Settings -> Environment Variables -> add both for Production and Preview.
 
 5. **Run the app**
-   - `npm run dev` -> open http://localhost:3000
+   - `npm run dev` -> open http://https://open-fiestaa.vercel.app
    - Use the Sign In button (top-right) to authenticate.
    - Start a chat; threads/messages will be persisted in Supabase.
 

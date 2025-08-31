@@ -47,7 +47,7 @@ Open-Fiesta is a web-based AI chat playground built with Next.js and TypeScript.
     ```bash
     npm run dev
     ```
-    The application will be available at `http://localhost:3000`.
+    The application will be available at `http://https://open-fiestaa.vercel.app`.
 
 ### Production Mode:
 

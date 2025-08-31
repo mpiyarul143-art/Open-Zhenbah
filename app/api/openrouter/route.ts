@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
           headers: {
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': referer || 'https://localhost:3000',
+            'HTTP-Referer': referer || 'https://open-fiestaa.vercel.app',
             'X-Title': title || 'AI Chat',
           },
           body: JSON.stringify({

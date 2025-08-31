@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
-import { Github, Chrome } from 'lucide-react'
+import { Github, Chrome, Instagram } from 'lucide-react'
 
 export default function SignIn() {
   const { user, signInWithProvider, loading } = useAuth()
@@ -53,25 +53,26 @@ export default function SignIn() {
             onClick={() => handleSignIn('google')}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-zinc-700 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white transition-colors"
           >
+
             <Chrome size={20} />
-            Continue with Google
-          </button>
+                        Continue with Google
+                                  </button>
 
-          <button
-            onClick={() => handleSignIn('github')}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-zinc-700 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white transition-colors"
-          >
-            <Github size={20} />
-            Continue with GitHub
-          </button>
-        </div>
+                                            <button
+                                                        onClick={() => handleSignIn('github')}
+                                                                    className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-zinc-700 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white transition-colors"
+                                                                              >
+                                                                                          <Github size={20} />
+                                                                                                      Continue with GitHub
+                                                                                                                </button>
+                                                                                                                        </div>
 
-        <div className="text-center">
-          <p className="text-xs text-zinc-500">
-            By signing in, you agree to our Terms of Service and Privacy Policy
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-}
+                                                                                                                                <div className="text-center">
+                                                                                                                                          <p className="text-xs text-zinc-500">
+                                                                                                                                                      By signing in, you agree to our Terms of Service and Privacy Policy
+                                                                                                                                                                </p>
+                                                                                                                                                                        </div>
+                                                                                                                                                                              </div>
+                                                                                                                                                                                  </div>
+                                                                                                                                                                                    )
+                                                                                                                                                                                    }

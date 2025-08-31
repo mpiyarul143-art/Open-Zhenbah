@@ -22,8 +22,8 @@ const nextConfig: NextConfig = {
   
   // Environment-specific configuration for shared URLs
   env: {
-    NEXT_PUBLIC_APP_URL: process.env.APP_URL || 'http://localhost:3000',
-    NEXT_PUBLIC_SHARE_URL_BASE: process.env.SHARE_URL_BASE || process.env.APP_URL || 'http://localhost:3000',
+    NEXT_PUBLIC_APP_URL: process.env.APP_URL || 'http://https://open-fiestaa.vercel.app',
+    NEXT_PUBLIC_SHARE_URL_BASE: process.env.SHARE_URL_BASE || process.env.APP_URL || 'http://https://open-fiestaa.vercel.app',
   },
   
   // Security headers and CORS configuration for production
@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
     const headers = [];
     
     if (isProduction) {
-      const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || ['https://localhost:3000'];
+      const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || ['https://open-fiestaa.vercel.app'];
       
       // Global security headers
       headers.push({
