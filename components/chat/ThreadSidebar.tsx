@@ -190,7 +190,7 @@ export default function ThreadSidebar({
           )}
         </button>
 
-        <div
+        {sidebarOpen &&<div
           className={`flex items-center justify-between p-4 ${sidebarOpen ? '' : 'opacity-0 pointer-events-none'
             }`}
         >
@@ -229,7 +229,7 @@ export default function ThreadSidebar({
               </span>
             </a>
           </div>
-        </div>
+        </div>}
 
         {/* Collapsed state - show image at the top */}
         {!sidebarOpen && (
@@ -528,7 +528,7 @@ export default function ThreadSidebar({
                   target="_blank"
                   rel="noopener noreferrer"
                   className={cn(
-                    "inline-flex items-center gap-3 rounded-xl px-3 py-2 shadow-sm hover:shadow-md transition-all duration-200 backdrop-blur-sm",
+                    "inline-flex items-center gap-3 rounded-lg px-3 py-2 shadow-sm hover:shadow-md transition-all duration-200 backdrop-blur-sm",
                     theme.mode === 'dark'
                       ? "bg-gradient-to-r from-white/8 to-white/4 border border-white/15 hover:border-white/25 hover:from-white/12 hover:to-white/6"
                       : "bg-gradient-to-r from-white/30 to-white/20 border border-white/40 hover:border-white/50 hover:from-white/40 hover:to-white/30"
@@ -566,38 +566,7 @@ export default function ThreadSidebar({
               </button>
             </div>
 
-            {/* Credits link under title */}
-            <div className="mb-4">
-              <a
-                href="https://x.com/byteHumi"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  "inline-flex items-center gap-3 rounded-xl px-3 py-2 shadow-sm hover:shadow-md transition-all duration-200 backdrop-blur-sm",
-                  theme.mode === 'dark'
-                    ? "bg-gradient-to-r from-white/8 to-white/4 border border-white/15 hover:border-white/25 hover:from-white/12 hover:to-white/6"
-                    : "bg-gradient-to-r from-white/30 to-white/20 border border-white/40 hover:border-white/50 hover:from-white/40 hover:to-white/30"
-                )}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/image.png"
-                  alt="Niladri"
-                  className={cn(
-                    "h-5 w-5 xl:h-7 xl:w-7 rounded-full object-cover shadow-sm",
-                    theme.mode === 'dark' ? "ring-2 ring-white/20" : "ring-2 ring-gray-300/50"
-                  )}
-                />
-                <span className={cn(
-                  "text-xs xl:text-sm",
-                  theme.mode === 'dark' ? "text-white/90" : "text-gray-700"
-                )}>
-                  <span className="font-medium">Made by</span>
-                  <span className="font-bold ml-1">Niladri</span>
-                </span>
-              </a>
-            </div>
-            <div className="flex-1 flex flex-col max-h-[76vh] overflow-y-auto">
+            <div className="flex-1 flex flex-col max-h-[82vh] overflow-y-auto">
             <div className="mb-4">
               <ProjectsSection
                 projects={projects}
